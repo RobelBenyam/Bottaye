@@ -176,6 +176,7 @@ export const tenantService = {
   async create(
     tenantData: Omit<Tenant, "id" | "createdAt" | "updatedAt">
   ): Promise<string> {
+    console.log("Creating tenant with data:", tenantData);
     const batch = writeBatch(db);
 
     // Create tenant
@@ -196,8 +197,14 @@ export const tenantService = {
       });
     }
 
-    await batch.commit();
-    return tenantRef.id;
+    try {
+      await batch.commit();
+      console.log("Tenant created with ID:", tenantRef.id);
+      return tenantRef.id;
+    } catch (error) {
+      console.error("Error creating tenant:", error);
+      throw error;
+    }
   },
 
   async getAll(): Promise<Tenant[]> {

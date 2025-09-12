@@ -363,166 +363,172 @@ export default function UnitsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredUnits.map((unit) => (
-            <div
-              key={unit.id}
-              className="card-hover group relative overflow-hidden cursor-pointer"
-              onClick={() => handleUnitClick(unit)}
-            >
-              {/* Unit Image */}
-              <div className="relative h-40 mb-4 rounded-lg overflow-hidden bg-secondary-100 dark:bg-secondary-700">
-                {unit.images && unit.images.length > 0 ? (
-                  <img
-                    src={unit.images[0]}
-                    alt={`Unit ${unit.unitNumber}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <DoorOpen className="h-12 w-12 text-secondary-300 dark:text-secondary-600" />
-                  </div>
-                )}
-
-                {/* Image count indicator */}
-                {unit.images && unit.images.length > 1 && (
-                  <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
-                    <ImageIcon className="h-3 w-3 mr-1" />
-                    {unit.images.length}
-                  </div>
-                )}
-
-                {/* Floor plan indicator */}
-                {unit.floorPlan && (
-                  <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
-                    <FileText className="h-3 w-3 mr-1" />
-                    Plan
-                  </div>
-                )}
-
-                {/* Status badge */}
-                <div className="absolute bottom-2 right-2">
-                  <span className={getStatusBadge(unit.status)}>
-                    {unit.status}
-                  </span>
-                </div>
-
-                {/* Edit Button - Shows on hover */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditUnit(unit);
-                  }}
-                  className="absolute bottom-2 left-2 p-2 bg-white dark:bg-secondary-800 rounded-lg shadow-md hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                  title="Edit Unit"
+          {filteredUnits.map(
+            (unit) => (
+              console.log(unit),
+              (
+                <div
+                  key={unit.id}
+                  className="card-hover group relative overflow-hidden cursor-pointer"
+                  onClick={() => handleUnitClick(unit)}
                 >
-                  <Edit className="h-4 w-4 text-secondary-600 dark:text-secondary-400" />
-                </button>
-              </div>
+                  {/* Unit Image */}
+                  <div className="relative h-40 mb-4 rounded-lg overflow-hidden bg-secondary-100 dark:bg-secondary-700">
+                    {unit.images && unit.images.length > 0 ? (
+                      <img
+                        src={unit.images[0]}
+                        alt={`Unit ${unit.unitNumber}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <DoorOpen className="h-12 w-12 text-secondary-300 dark:text-secondary-600" />
+                      </div>
+                    )}
 
-              <div className="px-1">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                      Unit {unit.unitNumber}
-                    </h3>
-                    <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                      {unit.propertyName}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {getStatusIcon(unit.status)}
-                  </div>
-                </div>
-              </div>
+                    {/* Image count indicator */}
+                    {unit.images && unit.images.length > 1 && (
+                      <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
+                        <ImageIcon className="h-3 w-3 mr-1" />
+                        {unit.images.length}
+                      </div>
+                    )}
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                    Type
-                  </span>
-                  <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                    {getUnitTypeLabel(unit.type)}
-                  </span>
-                </div>
+                    {/* Floor plan indicator */}
+                    {unit.floorPlan && (
+                      <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
+                        <FileText className="h-3 w-3 mr-1" />
+                        Plan
+                      </div>
+                    )}
 
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                    Rent
-                  </span>
-                  <span className="font-semibold text-secondary-900 dark:text-secondary-100">
-                    {formatCurrency(unit.rent)}/month
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                    Deposit
-                  </span>
-                  <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                    {formatCurrency(unit.deposit)}
-                  </span>
-                </div>
-
-                {unit.status === "occupied" && unit.tenantName && (
-                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <User className="h-4 w-4 text-secondary-400" />
-                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                        {unit.tenantName}
+                    {/* Status badge */}
+                    <div className="absolute bottom-2 right-2">
+                      <span className={getStatusBadge(unit.status)}>
+                        {unit.status}
                       </span>
                     </div>
-                    <div className="text-sm text-secondary-600 dark:text-secondary-400">
-                      <p>Tenant ID: {unit.tenantId}</p>
-                      <p>Status: Occupied</p>
+
+                    {/* Edit Button - Shows on hover */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditUnit(unit);
+                      }}
+                      className="absolute bottom-2 left-2 p-2 bg-white dark:bg-secondary-800 rounded-lg shadow-md hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                      title="Edit Unit"
+                    >
+                      <Edit className="h-4 w-4 text-secondary-600 dark:text-secondary-400" />
+                    </button>
+                  </div>
+
+                  <div className="px-1">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                          Unit {unit.unitNumber}
+                        </h3>
+                        <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                          {unit.propertyName}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {getStatusIcon(unit.status)}
+                      </div>
                     </div>
                   </div>
-                )}
 
-                {unit.status === "vacant" && (
-                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                    <p className="text-sm text-secondary-500 dark:text-secondary-400 italic">
-                      Available for rent
-                    </p>
-                  </div>
-                )}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                        Type
+                      </span>
+                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                        {getUnitTypeLabel(unit.type)}
+                      </span>
+                    </div>
 
-                {unit.status === "maintenance" && (
-                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                    <p className="text-sm text-warning-600 italic">
-                      Under maintenance
-                    </p>
-                  </div>
-                )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                        Rent
+                      </span>
+                      <span className="font-semibold text-secondary-900 dark:text-secondary-100">
+                        {formatCurrency(unit.rent)}/month
+                      </span>
+                    </div>
 
-                {/* Quick Tenant Action */}
-                <div className="pt-4 border-t border-secondary-200 dark:border-secondary-600 mt-4">
-                  <div className="flex justify-center">
-                    {unit.status === "occupied" && unit.tenantId ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/tenants`);
-                        }}
-                        className="btn-secondary text-sm py-2 px-4"
-                      >
-                        View Tenant
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/tenants`);
-                        }}
-                        className="btn-primary text-sm py-2 px-4"
-                      >
-                        Add Tenant
-                      </button>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                        Deposit
+                      </span>
+                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                        {formatCurrency(unit.deposit)}
+                      </span>
+                    </div>
+
+                    {unit.status === "occupied" && unit.tenantName && (
+                      <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <User className="h-4 w-4 text-secondary-400" />
+                          <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                            {unit.tenantName}
+                          </span>
+                        </div>
+                        <div className="text-sm text-secondary-600 dark:text-secondary-400">
+                          <p>Tenant ID: {unit.tenantId}</p>
+                          <p>Status: Occupied</p>
+                        </div>
+                      </div>
                     )}
+
+                    {unit.status === "vacant" && (
+                      <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                        <p className="text-sm text-secondary-500 dark:text-secondary-400 italic">
+                          Available for rent
+                        </p>
+                      </div>
+                    )}
+
+                    {unit.status === "maintenance" && (
+                      <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                        <p className="text-sm text-warning-600 italic">
+                          Under maintenance
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Quick Tenant Action */}
+                    <div className="pt-4 border-t border-secondary-200 dark:border-secondary-600 mt-4">
+                      <div className="flex justify-center">
+                        {/* && unit.tenantId */}
+                        {unit.status === "occupied" ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/tenants`);
+                            }}
+                            className="btn-secondary text-sm py-2 px-4"
+                          >
+                            View Tenant
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/tenants`);
+                            }}
+                            className="btn-primary text-sm py-2 px-4"
+                          >
+                            Add Tenant
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              )
+            )
+          )}
 
           {filteredUnits.length === 0 && (
             <div className="text-center py-12">
