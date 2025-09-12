@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  
+  body {
+    @apply bg-secondary-50 dark:bg-secondary-900 text-secondary-900 dark:text-secondary-100 antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 active:bg-primary-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 shadow-sm hover:shadow-md;
+  }
+  
+  .btn-secondary {
+    @apply bg-white dark:bg-secondary-800 hover:bg-secondary-50 dark:hover:bg-secondary-700 text-secondary-700 dark:text-secondary-200 font-medium py-3 px-6 rounded-lg border border-secondary-300 dark:border-secondary-600 hover:border-secondary-400 dark:hover:border-secondary-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 shadow-sm hover:shadow-md;
+  }
+  
+  .btn-danger {
+    @apply bg-error-600 hover:bg-error-700 active:bg-error-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-error-500 focus:ring-offset-2 shadow-sm hover:shadow-md;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-800 text-secondary-900 dark:text-secondary-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 placeholder-secondary-500 dark:placeholder-secondary-300;
+  }
+  
+  .card {
+    @apply bg-white dark:bg-secondary-800 rounded-xl shadow-sm border border-secondary-200 dark:border-secondary-700 p-6;
+  }
+  
+  .card-hover {
+    @apply card hover:shadow-lg hover:border-secondary-300 dark:hover:border-secondary-600 transition-all duration-300 cursor-pointer;
+  }
+} 
