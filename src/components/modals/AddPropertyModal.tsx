@@ -1,14 +1,16 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { X, Building2, Upload, Camera, Image } from 'lucide-react';
+import React from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { X, Building2, Upload, Camera, Image } from "lucide-react";
+import { uploadFileToCloudinary } from "@/lib/file";
+import { useAuthStore } from "@/stores/authStore";
 
 const propertySchema = z.object({
-  name: z.string().min(1, 'Property name is required'),
-  address: z.string().min(1, 'Address is required'),
-  type: z.enum(['residential', 'commercial', 'mixed'], {
-    required_error: 'Property type is required',
+  name: z.string().min(1, "Property name is required"),
+  address: z.string().min(1, "Address is required"),
+  type: z.enum(["residential", "commercial", "mixed"], {
+    required_error: "Property type is required",
   }),
   description: z.string().optional(),
   images: z.array(z.string()).optional(),
@@ -21,7 +23,10 @@ interface AddPropertyModalProps {
   onClose: () => void;
 }
 
-export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalProps) {
+export default function AddPropertyModal({
+  isOpen,
+  onClose,
+}: AddPropertyModalProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedImages, setSelectedImages] = React.useState<string[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -36,15 +41,17 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
     resolver: zodResolver(propertySchema),
   });
 
+  const { user } = useAuthStore();
+
   const handleImageUpload = (files: FileList | null) => {
     if (!files) return;
-    
-    Array.from(files).forEach(file => {
-      if (file.type.startsWith('image/')) {
+
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
-          setSelectedImages(prev => [...prev, result]);
+          setSelectedImages((prev) => [...prev, result]);
         };
         reader.readAsDataURL(file);
       }
@@ -52,7 +59,7 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
   };
 
   const removeImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -71,32 +78,46 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
     handleImageUpload(e.dataTransfer.files);
   };
 
-    const onSubmit = async (data: PropertyFormData) => {
+  const onSubmit = async (data: PropertyFormData) => {
     setIsLoading(true);
     try {
-      const { propertyService } = await import('../../services/database');
-      
+      const { propertyService } = await import("../../services/database");
+      // Upload images to Cloudinary and get URLs
+      const uploadedImageUrls = await Promise.all(
+        selectedImages.map(async (imageDataUrl, index) => {
+          // Convert data URL to Blob
+          const res = await fetch(imageDataUrl);
+          const blob = await res.blob();
+          // Upload to Cloudinary
+          const imageUrl = await uploadFileToCloudinary(blob, "properties");
+          return imageUrl;
+        })
+      );
+
+      // Create property with image URLs
+      const currUser = user || { id: "demo-admin", name: "Demo Admin" }; // Fallback to demo user if not logged in
+
       await propertyService.create({
         ...data,
-        images: selectedImages,
+        images: uploadedImageUrls,
         totalUnits: 0, // Will be updated as units are added
-        managerId: 'demo-admin', // TODO: Get from auth context
-        managerName: 'Demo Admin' // TODO: Get from auth context
+        managerId: currUser.id, // TODO: Get from auth context
+        managerName: currUser.name, // TODO: Get from auth context
       });
-      
+
       reset();
       onClose();
-      
+
       // Show success message
-      const toast = (await import('react-hot-toast')).default;
-      toast.success('Property created successfully!');
-      
+      const toast = (await import("react-hot-toast")).default;
+      toast.success("Property created successfully!");
+
       // Refresh the page to show new property
       window.location.reload();
     } catch (error) {
-      console.error('Error creating property:', error);
-      const toast = (await import('react-hot-toast')).default;
-      toast.error('Failed to create property. Please try again.');
+      console.error("Error creating property:", error);
+      const toast = (await import("react-hot-toast")).default;
+      toast.error("Failed to create property. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -112,7 +133,10 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-secondary-500 bg-opacity-75" onClick={handleClose} />
+        <div
+          className="fixed inset-0 transition-opacity bg-secondary-500 bg-opacity-75"
+          onClick={handleClose}
+        />
 
         <div className="inline-block w-full max-w-2xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-secondary-800 shadow-xl rounded-2xl">
           <div className="flex items-center justify-between mb-6">
@@ -139,13 +163,15 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
                   Property Name *
                 </label>
                 <input
-                  {...register('name')}
+                  {...register("name")}
                   type="text"
                   placeholder="e.g., Kilimani Heights"
                   className="input-field"
                 />
                 {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
@@ -153,14 +179,16 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
                 <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
                   Property Type *
                 </label>
-                <select {...register('type')} className="input-field">
+                <select {...register("type")} className="input-field">
                   <option value="">Select type</option>
                   <option value="residential">Residential</option>
                   <option value="commercial">Commercial</option>
                   <option value="mixed">Mixed Use</option>
                 </select>
                 {errors.type && (
-                  <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.type.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -170,13 +198,15 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
                 Address *
               </label>
               <input
-                {...register('address')}
+                {...register("address")}
                 type="text"
                 placeholder="e.g., Kilimani Road, Nairobi"
                 className="input-field"
               />
               {errors.address && (
-                <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.address.message}
+                </p>
               )}
             </div>
 
@@ -185,7 +215,7 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
                 Description
               </label>
               <textarea
-                {...register('description')}
+                {...register("description")}
                 rows={3}
                 placeholder="Optional description of the property..."
                 className="input-field resize-none"
@@ -200,8 +230,8 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   isDragging
-                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                    : 'border-secondary-300 dark:border-secondary-600 hover:border-primary-400'
+                    ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                    : "border-secondary-300 dark:border-secondary-600 hover:border-primary-400"
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -218,7 +248,10 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
                 <label htmlFor="property-images" className="cursor-pointer">
                   <Upload className="h-8 w-8 text-secondary-400 mx-auto mb-2" />
                   <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                    <span className="text-primary-600 font-medium">Click to upload</span> or drag and drop
+                    <span className="text-primary-600 font-medium">
+                      Click to upload
+                    </span>{" "}
+                    or drag and drop
                   </p>
                   <p className="text-xs text-secondary-500 dark:text-secondary-500 mt-1">
                     PNG, JPG, GIF up to 10MB each
@@ -262,7 +295,7 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
                 disabled={isLoading}
                 className="btn-primary"
               >
-                {isLoading ? 'Creating...' : 'Create Property'}
+                {isLoading ? "Creating..." : "Create Property"}
               </button>
             </div>
           </form>
@@ -270,4 +303,4 @@ export default function AddPropertyModal({ isOpen, onClose }: AddPropertyModalPr
       </div>
     </div>
   );
-} 
+}

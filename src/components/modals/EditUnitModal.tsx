@@ -1,17 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { X, DoorOpen, Hash, DollarSign, Upload, Image, FileText, Trash2 } from 'lucide-react';
-import { Unit } from '../../types';
-import LoadingSpinner from '../LoadingSpinner';
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import {
+  X,
+  DoorOpen,
+  Hash,
+  DollarSign,
+  Upload,
+  Image,
+  FileText,
+  Trash2,
+} from "lucide-react";
+import { Unit } from "../../types";
+import LoadingSpinner from "../LoadingSpinner";
+import { uploadFileToCloudinary } from "@/lib/file";
 
 const unitSchema = z.object({
-  propertyId: z.string().min(1, 'Property is required'),
-  unitNumber: z.string().min(1, 'Unit number is required'),
-  type: z.enum(['studio', '1_bedroom', '2_bedroom', '3_bedroom', '4_bedroom', 'office', 'shop']),
-  rent: z.number().min(1, 'Rent amount is required'),
-  deposit: z.number().min(1, 'Deposit amount is required'),
+  propertyId: z.string().min(1, "Property is required"),
+  unitNumber: z.string().min(1, "Unit number is required"),
+  type: z.enum([
+    "studio",
+    "1_bedroom",
+    "2_bedroom",
+    "3_bedroom",
+    "4_bedroom",
+    "office",
+    "shop",
+  ]),
+  rent: z.number().min(1, "Rent amount is required"),
+  deposit: z.number().min(1, "Deposit amount is required"),
   images: z.array(z.string()).optional(),
   floorPlan: z.string().optional(),
 });
@@ -26,10 +44,18 @@ interface EditUnitModalProps {
   onUpdate: (data: UnitFormData) => Promise<void>;
 }
 
-export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpdate }: EditUnitModalProps) {
+export default function EditUnitModal({
+  isOpen,
+  onClose,
+  unit,
+  properties,
+  onUpdate,
+}: EditUnitModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<string[]>(unit.images || []);
-  const [floorPlan, setFloorPlan] = useState<string>(unit.floorPlan || '');
+  const [selectedImages, setSelectedImages] = useState<string[]>(
+    unit.images || []
+  );
+  const [floorPlan, setFloorPlan] = useState<string>(unit.floorPlan || "");
   const [isDragging, setIsDragging] = useState(false);
 
   const {
@@ -47,15 +73,15 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
       type: unit.type,
       rent: unit.rent,
       deposit: unit.deposit,
-    }
+    },
   });
 
-  const rentValue = watch('rent');
+  const rentValue = watch("rent");
 
   useEffect(() => {
     if (isOpen) {
       setSelectedImages(unit.images || []);
-      setFloorPlan(unit.floorPlan || '');
+      setFloorPlan(unit.floorPlan || "");
       reset({
         propertyId: unit.propertyId,
         unitNumber: unit.unitNumber,
@@ -68,13 +94,13 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
 
   const handleImageUpload = (files: FileList | null) => {
     if (!files) return;
-    
-    Array.from(files).forEach(file => {
-      if (file.type.startsWith('image/')) {
+
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
-          setSelectedImages(prev => [...prev, result]);
+          setSelectedImages((prev) => [...prev, result]);
         };
         reader.readAsDataURL(file);
       }
@@ -83,9 +109,9 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
 
   const handleFloorPlanUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    
+
     const file = files[0];
-    if (file.type.startsWith('image/')) {
+    if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
@@ -96,11 +122,11 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
   };
 
   const removeImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const removeFloorPlan = () => {
-    setFloorPlan('');
+    setFloorPlan("");
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -122,25 +148,44 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
   const onSubmit = async (data: UnitFormData) => {
     setIsLoading(true);
     try {
+      const uploadedImageUrls = await Promise.all(
+        selectedImages.map(async (imageDataUrl, index) => {
+          // Convert data URL to Blob
+          const res = await fetch(imageDataUrl);
+          const blob = await res.blob();
+          // Upload to Cloudinary
+          const imageUrl = await uploadFileToCloudinary(blob, "unit");
+          return imageUrl;
+        })
+      );
+      let floorPlanUrl = "";
+      if (floorPlan) {
+        // Convert data URL to Blob
+        const res = await fetch(floorPlan);
+        const blob = await res.blob();
+        // Upload to Cloudinary
+        floorPlanUrl = await uploadFileToCloudinary(blob, "units");
+      }
+
       await onUpdate({
         ...data,
-        images: selectedImages,
-        floorPlan: floorPlan,
+        images: uploadedImageUrls,
+        floorPlan: floorPlanUrl,
       });
-      
+
       reset();
       setSelectedImages([]);
-      setFloorPlan('');
+      setFloorPlan("");
       onClose();
-      
-      const toast = (await import('react-hot-toast')).default;
-      toast.success('Unit updated successfully!');
-      
+
+      const toast = (await import("react-hot-toast")).default;
+      toast.success("Unit updated successfully!");
+
       window.location.reload();
     } catch (error) {
-      console.error('Error updating unit:', error);
-      const toast = (await import('react-hot-toast')).default;
-      toast.error('Failed to update unit. Please try again.');
+      console.error("Error updating unit:", error);
+      const toast = (await import("react-hot-toast")).default;
+      toast.error("Failed to update unit. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -149,13 +194,13 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
   const handleClose = () => {
     reset();
     setSelectedImages(unit.images || []);
-    setFloorPlan(unit.floorPlan || '');
+    setFloorPlan(unit.floorPlan || "");
     onClose();
   };
 
   const calculateDeposit = (rent: number) => {
     if (rent > 0) {
-      setValue('deposit', rent * 2);
+      setValue("deposit", rent * 2);
     }
   };
 
@@ -171,8 +216,12 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               <DoorOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-secondary-900 dark:text-secondary-100">Edit Unit</h2>
-              <p className="text-sm text-secondary-600 dark:text-secondary-400">Update unit information and photos</p>
+              <h2 className="text-xl font-semibold text-secondary-900 dark:text-secondary-100">
+                Edit Unit
+              </h2>
+              <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                Update unit information and photos
+              </p>
             </div>
           </div>
           <button
@@ -190,19 +239,18 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
             <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
               Property
             </label>
-            <select
-              {...register('propertyId')}
-              className="input-field"
-            >
+            <select {...register("propertyId")} className="input-field">
               <option value="">Select a property</option>
-              {properties.map(property => (
+              {properties.map((property) => (
                 <option key={property.id} value={property.id}>
                   {property.name}
                 </option>
               ))}
             </select>
             {errors.propertyId && (
-              <p className="mt-1 text-sm text-red-600">{errors.propertyId.message}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {errors.propertyId.message}
+              </p>
             )}
           </div>
 
@@ -216,12 +264,14 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               </label>
               <input
                 type="text"
-                {...register('unitNumber')}
+                {...register("unitNumber")}
                 className="input-field"
                 placeholder="e.g., 101, A1, etc."
               />
               {errors.unitNumber && (
-                <p className="mt-1 text-sm text-red-600">{errors.unitNumber.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.unitNumber.message}
+                </p>
               )}
             </div>
 
@@ -231,10 +281,7 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
                 <DoorOpen className="w-4 h-4 inline mr-1" />
                 Unit Type
               </label>
-              <select
-                {...register('type')}
-                className="input-field"
-              >
+              <select {...register("type")} className="input-field">
                 <option value="">Select unit type</option>
                 <option value="studio">Studio</option>
                 <option value="1_bedroom">1 Bedroom</option>
@@ -245,7 +292,9 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
                 <option value="shop">Shop/Retail</option>
               </select>
               {errors.type && (
-                <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.type.message}
+                </p>
               )}
             </div>
 
@@ -257,9 +306,9 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               </label>
               <input
                 type="number"
-                {...register('rent', { 
+                {...register("rent", {
                   valueAsNumber: true,
-                  onChange: (e) => calculateDeposit(Number(e.target.value))
+                  onChange: (e) => calculateDeposit(Number(e.target.value)),
                 })}
                 className="input-field"
                 placeholder="e.g., 25000"
@@ -267,7 +316,9 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
                 step="1"
               />
               {errors.rent && (
-                <p className="mt-1 text-sm text-red-600">{errors.rent.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.rent.message}
+                </p>
               )}
             </div>
 
@@ -279,18 +330,21 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               </label>
               <input
                 type="number"
-                {...register('deposit', { valueAsNumber: true })}
+                {...register("deposit", { valueAsNumber: true })}
                 className="input-field"
                 placeholder="e.g., 50000"
                 min="0"
                 step="1"
               />
               {errors.deposit && (
-                <p className="mt-1 text-sm text-red-600">{errors.deposit.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.deposit.message}
+                </p>
               )}
               {rentValue > 0 && (
                 <p className="mt-1 text-xs text-secondary-600 dark:text-secondary-400">
-                  Suggested: KES {(rentValue * 2).toLocaleString()} (2 months rent)
+                  Suggested: KES {(rentValue * 2).toLocaleString()} (2 months
+                  rent)
                 </p>
               )}
             </div>
@@ -302,7 +356,7 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               <Image className="w-4 h-4 inline mr-1" />
               Unit Photos
             </label>
-            
+
             {/* Current Images */}
             {selectedImages.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
@@ -329,8 +383,8 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 isDragging
-                  ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20'
-                  : 'border-secondary-300 dark:border-secondary-600 hover:border-primary-400'
+                  ? "border-primary-400 bg-primary-50 dark:bg-primary-900/20"
+                  : "border-secondary-300 dark:border-secondary-600 hover:border-primary-400"
               }`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -347,7 +401,10 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               <label htmlFor="unit-photos-edit" className="cursor-pointer">
                 <Upload className="w-8 h-8 text-secondary-400 mx-auto mb-2" />
                 <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                  <span className="text-primary-600 font-medium">Click to upload</span> or drag photos
+                  <span className="text-primary-600 font-medium">
+                    Click to upload
+                  </span>{" "}
+                  or drag photos
                 </p>
                 <p className="text-xs text-secondary-500 mt-1">
                   Room photos, interior views
@@ -362,7 +419,7 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               <FileText className="w-4 h-4 inline mr-1" />
               Floor Plan
             </label>
-            
+
             {/* Current Floor Plan */}
             {floorPlan && (
               <div className="relative group mb-4">
@@ -393,7 +450,9 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
               <label htmlFor="floor-plan-edit" className="cursor-pointer">
                 <FileText className="w-6 h-6 text-secondary-400 mx-auto mb-2" />
                 <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                  <span className="text-primary-600 font-medium">Upload floor plan</span>
+                  <span className="text-primary-600 font-medium">
+                    Upload floor plan
+                  </span>
                 </p>
                 <p className="text-xs text-secondary-500 mt-1">
                   Unit layout, measurements
@@ -423,7 +482,7 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
                   <span className="ml-2">Updating...</span>
                 </div>
               ) : (
-                'Update Unit'
+                "Update Unit"
               )}
             </button>
           </div>
@@ -431,4 +490,4 @@ export default function EditUnitModal({ isOpen, onClose, unit, properties, onUpd
       </div>
     </div>
   );
-} 
+}
