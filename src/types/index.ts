@@ -78,13 +78,14 @@ export interface Payment {
   propertyId: string;
   propertyName: string;
   amount: number;
-  type: "rent" | "deposit" | "maintenance" | "penalty" | "other";
+  type: "rent" | "deposit" | "maintenance" | "penalty" | "other" | "penalty";
   method: "cash" | "mpesa" | "bank_transfer" | "cheque";
   referenceNumber?: string;
   description?: string;
   dueDate: Date;
   paidDate?: Date;
   status: "pending" | "paid" | "overdue" | "partial";
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
 }

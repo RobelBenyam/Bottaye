@@ -120,8 +120,10 @@ export function useUnitsForUser() {
     try {
       // Get user's properties first
       const userProperties = await propertyService.getByUserId(user.id);
-      const propertyIds = userProperties.map(p => p.id);
-      
+      const propertyIds = userProperties.map((p) => p.id);
+
+      console.log("ids", propertyIds);
+
       // Use efficient database query instead of fetching all then filtering
       if (propertyIds.length > 0) {
         const filteredUnits = await unitService.getByPropertyIds(propertyIds);

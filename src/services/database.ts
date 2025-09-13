@@ -1,3 +1,6 @@
+import { useEffect, useState } from "react";
+// React hook to fetch all payments from Firestore
+
 import {
   collection,
   doc,
@@ -15,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { Property, Unit, Tenant, Payment, Maintenance, Lease } from "../types";
+import { readAllDocuments } from "@/lib/db";
 
 // Collection names
 const COLLECTIONS = {
@@ -109,12 +113,15 @@ export const propertyService = {
   },
 
   getByUserId: async (userId: string) => {
-    const properties = await dbUtils.getCollectionWhere<Property>(
-      COLLECTIONS.PROPERTIES,
-      "managerId",
-      "==",
-      userId
-    );
+    // const properties = await dbUtils.getCollectionWhere<Property>(
+    //   COLLECTIONS.PROPERTIES,
+    //   "managerId",
+    //   "==",
+    //   userId
+    // );
+
+    const properties = await readAllDocuments(COLLECTIONS.PROPERTIES);
+    console.log("prop", properties);
     return properties;
   },
 };
@@ -367,6 +374,7 @@ export const paymentService = {
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.PAYMENTS), orderBy("dueDate", "desc"))
     );
+
     return querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),

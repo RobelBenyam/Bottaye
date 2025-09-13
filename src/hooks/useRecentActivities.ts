@@ -39,7 +39,16 @@ export function useRecentActivities(max = 10) {
         limit(max)
       );
       const snapshot = await getDocs(q);
-      setActivities(snapshot.docs.map((doc) => doc.data() as Activity));
+      setActivities(
+        snapshot.docs.map((doc) => {
+          return {
+            ...(doc.data() as Omit<Activity, "time">),
+            time:
+              doc.data().time?.toDate().toISOString() ||
+              new Date().toISOString(),
+          } as Activity;
+        })
+      );
       setLoading(false);
     }
     fetchActivities();

@@ -23,6 +23,7 @@ export function usePayments(filter?: {
 
   const fetchPayments = async () => {
     setLoading(true);
+    console.log("fetching payments with filter:", filter);
     try {
       let data: Payment[];
       if (filter?.tenantId) {

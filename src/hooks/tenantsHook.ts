@@ -93,23 +93,26 @@ export function useTenantsForUser() {
     if (!user) {
       setTenants([]);
       setLoading(false);
+      console.log("no user");
       return;
     }
+    console.log("yes user");
 
     try {
       // Get user's properties first
       const userProperties = await propertyService.getByUserId(user.id);
-      const propertyIds = userProperties.map(p => p.id);
-      
+      const propertyIds = userProperties.map((p) => p.id);
+
       const units = await unitService.getByPropertyIds(propertyIds);
-      const unitIds = units.map(u => u.id);
-      
+      const unitIds = units.map((u) => u.id);
+
       // Get tenants for those units
       const allTenants = await tenantService.getAll();
-      const filteredTenants = allTenants.filter(tenant => 
-        tenant.unitId && unitIds.includes(tenant.unitId)
+      const filteredTenants = allTenants.filter(
+        (tenant) => true
+        // tenant.unitId && unitIds.includes(tenant.unitId)
       );
-      
+
       setTenants(filteredTenants);
     } catch (error) {
       console.error("Failed to fetch user's tenants:", error);

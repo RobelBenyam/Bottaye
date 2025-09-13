@@ -54,10 +54,9 @@ const MaintenancePage: React.FC = () => {
   const { tenants, loading: tenantsLoading } = useTenantsForUser();
 
   const userProperties: Property[] = useMemo(
-    () => (user ? properties.filter((p) => p.managerId === user.id) : []),
+    () => (user ? properties.filter((p) => true) : []),
     [properties, user]
   );
-
   const propertyIds: string[] = useMemo(
     () => userProperties.map((p) => p.id),
     [userProperties]
