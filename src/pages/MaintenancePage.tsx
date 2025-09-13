@@ -11,6 +11,8 @@ import {
   User,
   MapPin,
   DollarSign,
+  Pencil,
+  Trash,
 } from "lucide-react";
 
 import { useMaintenance } from "@/hooks/maintenanceHook";
@@ -43,6 +45,9 @@ const MaintenancePage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const [isEditRequestOpen, setIsEditRequestOpen] = useState(false);
+  const [editRequest, setEditRequest] = useState<Maintenance | null>(null);
+  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
 
   const { user } = useAuthStore();
   const { properties, loading: propertiesLoading } = useProperties();
@@ -74,6 +79,8 @@ const MaintenancePage: React.FC = () => {
     maintenance,
     loading: maintenanceLoading,
     createMaintenance,
+    updateMaintenance,
+    deleteMaintenance,
   } = useMaintenance(propertyIds);
 
   const handleCreateRequest = async (formData: NewMaintenanceForm) => {
@@ -104,6 +111,51 @@ const MaintenancePage: React.FC = () => {
       setIsNewRequestOpen(false);
     } catch (err) {
       console.error("Failed to create request:", err);
+    }
+  };
+
+  const handleEditRequest = (request: Maintenance) => {
+    setEditRequest(request);
+    setIsEditRequestOpen(true);
+  };
+
+  const handleUpdateRequest = async (formData: NewMaintenanceForm) => {
+    if (!editRequest) return;
+    const maintenanceData = {
+      ...formData,
+      category: formData.requestType,
+      reportedDate: new Date(formData.reportedDate),
+      scheduledDate: formData.scheduledDate
+        ? new Date(formData.scheduledDate)
+        : undefined,
+      completedAt: formData.completedDate
+        ? new Date(formData.completedDate)
+        : undefined,
+      estimatedCost:
+        formData.estimatedCost === ""
+          ? undefined
+          : Number(formData.estimatedCost),
+      actualCost:
+        formData.actualCost === "" ? undefined : Number(formData.actualCost),
+    };
+    delete (maintenanceData as any).requestType;
+    delete (maintenanceData as any).completedDate;
+    try {
+      await updateMaintenance(editRequest.id, maintenanceData as any);
+      setIsEditRequestOpen(false);
+      setEditRequest(null);
+    } catch (err) {
+      console.error("Failed to update request:", err);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!deleteRequestId) return;
+    try {
+      await deleteMaintenance(deleteRequestId);
+      setDeleteRequestId(null);
+    } catch (err) {
+      console.error("Failed to delete request:", err);
     }
   };
 
@@ -266,6 +318,21 @@ const MaintenancePage: React.FC = () => {
                       >
                         {request.priority ?? "medium"}
                       </span>
+                      {/* Edit & Delete Buttons */}
+                      <button
+                        className="ml-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Edit Request"
+                        onClick={() => handleEditRequest(request)}
+                      >
+                        <Pencil className="w-4 h-4 text-blue-500" />
+                      </button>
+                      <button
+                        className="ml-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Delete Request"
+                        onClick={() => setDeleteRequestId(request.id)}
+                      >
+                        <Trash className="w-4 h-4 text-red-500" />
+                      </button>
                     </div>
                     <p className="text-gray-600 dark:text-gray-400 mb-3">
                       {request.description || "No description provided."}
@@ -354,6 +421,44 @@ const MaintenancePage: React.FC = () => {
             tenants={userTenants}
             onCreateRequest={handleCreateRequest}
           />
+          {/* Edit Maintenance Modal */}
+          <AddMaintenanceRequest
+            isOpen={isEditRequestOpen}
+            setIsOpen={setIsEditRequestOpen}
+            properties={userProperties}
+            units={userUnits}
+            tenants={userTenants}
+            onCreateRequest={handleUpdateRequest}
+            initialData={editRequest as any}
+          />
+          {/* Delete Confirmation Modal */}
+          {deleteRequestId && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Confirm Delete
+                </h2>
+                <p className="mb-6 text-gray-700 dark:text-gray-300">
+                  Are you sure you want to delete this maintenance request? This
+                  action cannot be undone.
+                </p>
+                <div className="flex space-x-3">
+                  <button
+                    className="btn-secondary flex-1"
+                    onClick={() => setDeleteRequestId(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-danger flex-1"
+                    onClick={handleDeleteRequest}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

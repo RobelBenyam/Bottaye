@@ -30,24 +30,36 @@ interface AddMaintenanceRequestProps {
   units: Unit[];
   tenants: Tenant[];
   onCreateRequest: (form: NewMaintenanceForm) => Promise<void>;
+  initialData?: Partial<NewMaintenanceForm>;
 }
 
-export default function AddMaintenanceRequest({
-  isOpen,
-  setIsOpen,
-  properties,
-  units,
-  tenants,
-  onCreateRequest,
-}: AddMaintenanceRequestProps) {
+export default function AddMaintenanceRequest(
+  props: AddMaintenanceRequestProps
+) {
+  const {
+    isOpen,
+    setIsOpen,
+    properties,
+    units,
+    tenants,
+    onCreateRequest,
+    initialData,
+  } = props;
   const [form, setForm] = useState<NewMaintenanceForm>(initialFormState);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setForm(initialFormState);
+      if (initialData) {
+        setForm({
+          ...initialFormState,
+          ...initialData,
+        });
+      } else {
+        setForm(initialFormState);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -122,10 +134,14 @@ export default function AddMaintenanceRequest({
             </div>
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                New Maintenance Request
+                {initialData
+                  ? "Edit Maintenance Request"
+                  : "New Maintenance Request"}
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Fill in the details to create a new maintenance task.
+                {initialData
+                  ? "Update the details for this maintenance task."
+                  : "Fill in the details to create a new maintenance task."}
               </p>
             </div>
           </div>
@@ -344,7 +360,11 @@ export default function AddMaintenanceRequest({
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? "Submitting..." : "Create Request"}
+            {loading
+              ? "Submitting..."
+              : initialData
+              ? "Update Request"
+              : "Create Request"}
           </button>
         </div>
       </div>
