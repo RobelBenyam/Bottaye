@@ -9,6 +9,7 @@ import {
   dbUtils,
 } from "../services/database";
 import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
+import { useAuthStore } from "@/stores/authStore";
 
 // Units hook
 export function useUnits(propertyId?: string) {
@@ -102,4 +103,43 @@ export function useAvailableUnits() {
 }
 function useAsyncOperation<T>(): { execute: any; loading: any } {
   return { execute: null, loading: null };
+}
+
+export function useUnitsForUser() {
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuthStore();
+
+  const fetchUnits = async () => {
+    if (!user) {
+      setUnits([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Get user's properties first
+      const userProperties = await propertyService.getByUserId(user.id);
+      const propertyIds = userProperties.map(p => p.id);
+      
+      // Use efficient database query instead of fetching all then filtering
+      if (propertyIds.length > 0) {
+        const filteredUnits = await unitService.getByPropertyIds(propertyIds);
+        setUnits(filteredUnits);
+      } else {
+        setUnits([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user's units:", error);
+      setUnits([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUnits();
+  }, [user?.id]);
+
+  return { units, loading, refetch: fetchUnits };
 }

@@ -1,5 +1,5 @@
 // Temporary localStorage service for development (before Firebase is ready)
-import { Property, Unit, Tenant, Payment, Maintenance } from '../types';
+import { Property, Unit, Tenant, Payment, Maintenance, Lease } from '../types';
 
 const STORAGE_KEYS = {
   PROPERTIES: 'bottaye_properties',
@@ -119,10 +119,11 @@ export const localUnitService = {
 
 // Local tenants (fallback)
 // Local leases (fallback)
+
 export const localLeaseService = {
-  async create(leaseData: any): Promise<string> {
-    const leases = getFromStorage<any>(STORAGE_KEYS.LEASES);
-    const newLease = {
+  async create(leaseData: Omit<Lease, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
+    const newLease: Lease = {
       ...leaseData,
       id: generateId(),
       createdAt: new Date(),
@@ -130,15 +131,40 @@ export const localLeaseService = {
     };
     leases.push(newLease);
     saveToStorage(STORAGE_KEYS.LEASES, leases);
+    
+    // Update unit status to occupied
+    if (leaseData.unitId) {
+      await localUnitService.update(leaseData.unitId, {
+        status: 'occupied',
+        tenantId: leaseData.tenantId,
+        tenantName: leaseData.tenantName,
+      } as any);
+    }
+    
     return newLease.id;
   },
 
-  async getAll(): Promise<any[]> {
-    return getFromStorage<any>(STORAGE_KEYS.LEASES);
+  async getAll(): Promise<Lease[]> {
+    return getFromStorage<Lease>(STORAGE_KEYS.LEASES);
   },
 
-  async update(id: string, updates: any): Promise<void> {
-    const leases = getFromStorage<any>(STORAGE_KEYS.LEASES);
+  async getById(id: string): Promise<Lease | null> {
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
+    return leases.find(l => l.id === id) || null;
+  },
+
+  async getByTenantId(tenantId: string): Promise<Lease[]> {
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
+    return leases.filter(l => l.tenantId === tenantId);
+  },
+
+  async getByUnitId(unitId: string): Promise<Lease[]> {
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
+    return leases.filter(l => l.unitId === unitId);
+  },
+
+  async update(id: string, updates: Partial<Lease>): Promise<void> {
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
     const index = leases.findIndex(l => l.id === id);
     if (index !== -1) {
       leases[index] = { ...leases[index], ...updates, updatedAt: new Date() };
@@ -147,9 +173,25 @@ export const localLeaseService = {
   },
 
   async delete(id: string): Promise<void> {
-    const leases = getFromStorage<any>(STORAGE_KEYS.LEASES);
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
     const filtered = leases.filter(l => l.id !== id);
     saveToStorage(STORAGE_KEYS.LEASES, filtered);
+  },
+
+  async renewLease(leaseId: string, newEndDate: Date, specialTerms?: string): Promise<void> {
+    const leases = getFromStorage<Lease>(STORAGE_KEYS.LEASES);
+    const index = leases.findIndex(l => l.id === leaseId);
+    if (index !== -1) {
+      leases[index] = {
+        ...leases[index],
+        endDate: newEndDate,
+        lastRenewalDate: new Date(),
+        status: "active",
+        specialTerms: specialTerms || leases[index].specialTerms,
+        updatedAt: new Date()
+      };
+      saveToStorage(STORAGE_KEYS.LEASES, leases);
+    }
   }
 };
 

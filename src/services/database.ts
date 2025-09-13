@@ -11,9 +11,10 @@ import {
   orderBy,
   Timestamp,
   writeBatch,
+  WhereFilterOp, // Add this import
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
+import { Property, Unit, Tenant, Payment, Maintenance, Lease } from "../types";
 
 // Collection names
 const COLLECTIONS = {
@@ -23,6 +24,7 @@ const COLLECTIONS = {
   PAYMENTS: "payments",
   MAINTENANCE: "maintenance",
   USERS: "users",
+  LEASES: "leases",
 } as const;
 
 // Property operations
@@ -75,6 +77,12 @@ export const propertyService = {
   async delete(id: string): Promise<void> {
     const docRef = doc(db, COLLECTIONS.PROPERTIES, id);
     await deleteDoc(docRef);
+  },
+
+  getByUserId: async (userId: string) => {
+    // Query Firestore for properties where managerId equals userId
+    const properties = await dbUtils.getCollectionWhere('properties', 'managerId', '==', userId);
+    return properties;
   },
 };
 
@@ -168,6 +176,25 @@ export const unitService = {
   async delete(id: string): Promise<void> {
     const docRef = doc(db, COLLECTIONS.UNITS, id);
     await deleteDoc(docRef);
+  },
+
+  getByPropertyIds: async (propertyIds: string[]): Promise<Unit[]> => {
+    if (propertyIds.length === 0) return [];
+    
+    const querySnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.UNITS),
+        where("propertyId", "in", propertyIds),
+        orderBy("propertyName"),
+        orderBy("unitNumber")
+      )
+    );
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate(),
+    })) as Unit[];
   },
 };
 
@@ -485,5 +512,179 @@ export const dbUtils = {
           ? Math.round((collectedThisMonth / totalRevenue) * 100)
           : 0,
     };
+  },
+
+  
+  async getCollectionWhere(
+    collectionName: string,
+    field: string,
+    operator: WhereFilterOp, 
+    value: any
+  ): Promise<any[]> {
+    const collectionRef = collection(db, collectionName);
+    const q = query(collectionRef, where(field, operator, value));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  },
+};
+
+
+export const leaseService = {
+  async create(leaseData: Omit<Lease, "id" | "createdAt" | "updatedAt">): Promise<string> {
+    const batch = writeBatch(db);
+    
+    // Create lease
+    const leaseRef = doc(collection(db, COLLECTIONS.LEASES));
+    batch.set(leaseRef, {
+      ...leaseData,
+      startDate: Timestamp.fromDate(leaseData.startDate),
+      endDate: Timestamp.fromDate(leaseData.endDate),
+      lastRenewalDate: leaseData.lastRenewalDate ? Timestamp.fromDate(leaseData.lastRenewalDate) : null,
+      renewalNoticeDate: leaseData.renewalNoticeDate ? Timestamp.fromDate(leaseData.renewalNoticeDate) : null,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+
+    // Update unit status to occupied
+    if (leaseData.unitId) {
+      const unitRef = doc(db, COLLECTIONS.UNITS, leaseData.unitId);
+      batch.update(unitRef, {
+        status: "occupied",
+        tenantId: leaseData.tenantId,
+        tenantName: leaseData.tenantName,
+        updatedAt: Timestamp.now()
+      });
+    }
+
+    await batch.commit();
+    return leaseRef.id;
+  },
+
+  async getAll(): Promise<Lease[]> {
+    const querySnapshot = await getDocs(
+      query(collection(db, COLLECTIONS.LEASES), orderBy("createdAt", "desc"))
+    );
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      startDate: doc.data().startDate?.toDate(),
+      endDate: doc.data().endDate?.toDate(),
+      lastRenewalDate: doc.data().lastRenewalDate?.toDate(),
+      renewalNoticeDate: doc.data().renewalNoticeDate?.toDate(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate()
+    })) as Lease[];
+  },
+
+  async getById(id: string): Promise<Lease | null> {
+    const docRef = doc(db, COLLECTIONS.LEASES, id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) return null;
+    
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      startDate: docSnap.data().startDate?.toDate(),
+      endDate: docSnap.data().endDate?.toDate(),
+      lastRenewalDate: docSnap.data().lastRenewalDate?.toDate(),
+      renewalNoticeDate: docSnap.data().renewalNoticeDate?.toDate(),
+      createdAt: docSnap.data().createdAt?.toDate(),
+      updatedAt: docSnap.data().updatedAt?.toDate()
+    } as Lease;
+  },
+
+  async getByTenantId(tenantId: string): Promise<Lease[]> {
+    const querySnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.LEASES),
+        where("tenantId", "==", tenantId),
+        orderBy("createdAt", "desc")
+      )
+    );
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      startDate: doc.data().startDate?.toDate(),
+      endDate: doc.data().endDate?.toDate(),
+      lastRenewalDate: doc.data().lastRenewalDate?.toDate(),
+      renewalNoticeDate: doc.data().renewalNoticeDate?.toDate(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate()
+    })) as Lease[];
+  },
+
+  async getByUnitId(unitId: string): Promise<Lease[]> {
+    const querySnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.LEASES),
+        where("unitId", "==", unitId),
+        orderBy("createdAt", "desc")
+      )
+    );
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      startDate: doc.data().startDate?.toDate(),
+      endDate: doc.data().endDate?.toDate(),
+      lastRenewalDate: doc.data().lastRenewalDate?.toDate(),
+      renewalNoticeDate: doc.data().renewalNoticeDate?.toDate(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate()
+    })) as Lease[];
+  },
+
+  async update(id: string, updates: Partial<Lease>): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.LEASES, id);
+    const updateData: any = {
+      ...updates,
+      updatedAt: Timestamp.now()
+    };
+
+    if (updates.startDate) {
+      updateData.startDate = Timestamp.fromDate(updates.startDate);
+    }
+    if (updates.endDate) {
+      updateData.endDate = Timestamp.fromDate(updates.endDate);
+    }
+    if (updates.lastRenewalDate) {
+      updateData.lastRenewalDate = Timestamp.fromDate(updates.lastRenewalDate);
+    }
+    if (updates.renewalNoticeDate) {
+      updateData.renewalNoticeDate = Timestamp.fromDate(updates.renewalNoticeDate);
+    }
+
+    await updateDoc(docRef, updateData);
+  },
+
+  async delete(id: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.LEASES, id);
+    await deleteDoc(docRef);
+  },
+
+  async renewLease(leaseId: string, newEndDate: Date, specialTerms?: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.LEASES, leaseId);
+    await updateDoc(docRef, {
+      endDate: Timestamp.fromDate(newEndDate),
+      lastRenewalDate: Timestamp.now(),
+      status: "active",
+      specialTerms: specialTerms || "",
+      updatedAt: Timestamp.now()
+    });
+  },
+
+  getByPropertyId: async (propertyId: string) => {
+    // Query Firestore for leases where propertyId equals propertyId
+    const leases = await dbUtils.getCollectionWhere('leases', 'propertyId', '==', propertyId);
+    return leases;
+  },
+
+  getByPropertyIds: async (propertyIds: string[]) => {
+    // Query Firestore for leases where propertyId is in propertyIds array
+    const leases = await dbUtils.getCollectionWhere('leases', 'propertyId', 'in', propertyIds);
+    return leases;
   },
 };

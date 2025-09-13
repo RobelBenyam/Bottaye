@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   Search,
@@ -18,37 +18,10 @@ import {
   Home,
 } from "lucide-react";
 import { formatCurrency } from "../utils/currency";
-import { unitService, tenantService } from "../services/database";
-import { localUnitService, localLeaseService } from "../services/localStorage";
-import { useTenants } from "@/hooks/tenantsHook";
-
-interface Lease {
-  id: string;
-  tenantName: string;
-  tenantEmail: string;
-  tenantPhone: string;
-  unitNumber: string;
-  propertyName: string;
-  startDate: string;
-  endDate: string;
-  monthlyRent: number;
-  securityDeposit: number;
-  leaseType: "fixed" | "month_to_month" | "yearly";
-  status: "active" | "expiring_soon" | "expired" | "terminated" | "renewed";
-  renewalOption: boolean;
-  specialTerms?: string;
-  documentUrl?: string;
-  lastRenewalDate?: string;
-  renewalNoticeDate?: string;
-  petPolicy?: "no_pets" | "cats_allowed" | "dogs_allowed" | "all_pets";
-  smokingPolicy?: "no_smoking" | "smoking_allowed";
-  utilitiesIncluded?: string[];
-  parkingSpaces?: number;
-  lateFeePenalty?: number;
-  earlyTerminationFee?: number;
-  maintenanceResponsibility?: "landlord" | "tenant" | "shared";
-  emergencyContact?: { name: string; phone: string; relationship: string };
-}
+import { useTenantsForUser } from "@/hooks/tenantsHook";
+import { useUnitsForUser } from "@/hooks/unitsHook";
+import { useLeases } from "@/hooks/leasesHook";
+import { Lease } from "../types";
 
 export default function LeasesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,14 +34,13 @@ export default function LeasesPage() {
   const [isRenewLeaseOpen, setIsRenewLeaseOpen] = useState(false);
   const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
   const [isEditLeaseOpen, setIsEditLeaseOpen] = useState(false);
-  const { tenants, loading: tenantsLoading } = useTenants();
-  const [availableUnits, setAvailableUnits] = useState<any[]>([]);
-
-  // Debug tenant loading
-  useEffect(() => {
-    console.log("🔍 Tenants loaded:", tenants);
-    console.log("🔍 Tenants loading:", tenantsLoading);
-  }, [tenants, tenantsLoading]);
+  
+  // Use hooks for user-filtered data
+  const { tenants, loading: tenantsLoading } = useTenantsForUser();
+  const { units: allUnits, loading: unitsLoading } = useUnitsForUser();
+  const { leases, loading: leasesLoading, createLease, updateLease } = useLeases();
+  
+  const availableUnits = allUnits.filter(unit => unit.status === "vacant");
 
   // New lease form state
   const [newLeaseForm, setNewLeaseForm] = useState({
@@ -99,20 +71,7 @@ export default function LeasesPage() {
     },
   });
 
-  useEffect(() => {
-    const loadUnits = async () => {
-      try {
-        let units;
-        try {
-          units = await unitService.getAll();
-        } catch {
-          units = await localUnitService.getAll();
-        }
-        setAvailableUnits(units.filter((u: any) => u.status === "vacant"));
-      } catch {}
-    };
-    loadUnits();
-  }, []);
+  // REMOVE the manual lease loading useEffect - now handled by useLeases hook
 
   const handleCreateLease = async () => {
     if (
@@ -134,16 +93,17 @@ export default function LeasesPage() {
       );
 
       if (selectedTenant && selectedUnit) {
-        // Here you would normally save to database
-        const newLease: Lease = {
-          id: Math.random().toString(36).slice(2),
+        const newLease: Omit<Lease, "id" | "createdAt" | "updatedAt"> = {
+          tenantId: selectedTenant.id,
+          unitId: selectedUnit.id,
+          propertyId: selectedUnit.propertyId || "unknown",
           tenantName: selectedTenant.name,
           tenantEmail: selectedTenant.email,
           tenantPhone: selectedTenant.phone,
           unitNumber: selectedUnit.unitNumber,
           propertyName: selectedUnit.propertyName,
-          startDate: newLeaseForm.startDate,
-          endDate: newLeaseForm.endDate,
+          startDate: new Date(newLeaseForm.startDate),
+          endDate: new Date(newLeaseForm.endDate),
           monthlyRent: Number(
             newLeaseForm.monthlyRent || selectedUnit.rent || 0
           ),
@@ -152,13 +112,20 @@ export default function LeasesPage() {
           ),
           leaseType: newLeaseForm.leaseType,
           status: "active",
-          renewalOption: true,
+          renewalOption: newLeaseForm.renewalOption,
           specialTerms: newLeaseForm.specialTerms,
+          petPolicy: newLeaseForm.petPolicy,
+          smokingPolicy: newLeaseForm.smokingPolicy,
+          utilitiesIncluded: newLeaseForm.utilitiesIncluded,
+          parkingSpaces: Number(newLeaseForm.parkingSpaces),
+          lateFeePenalty: Number(newLeaseForm.lateFeePenalty) || 0,
+          earlyTerminationFee: Number(newLeaseForm.earlyTerminationFee) || 0,
+          maintenanceResponsibility: newLeaseForm.maintenanceResponsibility,
+          emergencyContact: newLeaseForm.emergencyContact,
         };
-        setLeases((prev) => [newLease, ...prev]);
-        await localLeaseService.create(newLease);
-
-        alert("Lease created successfully!");
+        
+        // Use hook method instead of manual state management
+        await createLease(newLease);
         setIsNewLeaseOpen(false);
         setNewLeaseForm({
           tenantId: "",
@@ -185,6 +152,7 @@ export default function LeasesPage() {
         });
       }
     } catch (error) {
+      console.error("❌ Failed to create lease:", error);
       alert("Failed to create lease");
     }
   };
@@ -207,8 +175,8 @@ export default function LeasesPage() {
     const formData = new FormData(form);
 
     const updated: Partial<Lease> = {
-      startDate: String(formData.get("startDate") || selectedLease.startDate),
-      endDate: String(formData.get("endDate") || selectedLease.endDate),
+      startDate: new Date(String(formData.get("startDate") || selectedLease.startDate)),
+      endDate: new Date(String(formData.get("endDate") || selectedLease.endDate)),
       leaseType: String(
         formData.get("leaseType") || selectedLease.leaseType
       ) as any,
@@ -256,89 +224,10 @@ export default function LeasesPage() {
       ),
     };
 
-    setLeases((prev) =>
-      prev.map((l) => (l.id === selectedLease.id ? { ...l, ...updated } : l))
-    );
-    localLeaseService.update(selectedLease.id, updated).catch(console.error);
+    // Use hook method instead of manual state management
+    await updateLease(selectedLease.id, updated);
     setIsEditLeaseOpen(false);
   };
-
-  // Leases state
-  const [leases, setLeases] = useState<Lease[]>([]);
-
-  // Load leases from localStorage
-  useEffect(() => {
-    const loadLeases = async () => {
-      try {
-        const existingLeases = await localLeaseService.getAll();
-        if (existingLeases.length > 0) {
-          setLeases(existingLeases);
-        } else {
-          // Initialize with sample leases if none exist
-          const sampleLeases: Lease[] = [
-            {
-              id: "1",
-              tenantName: "John Doe",
-              tenantEmail: "john.doe@email.com",
-              tenantPhone: "+254712345678",
-              unitNumber: "2A",
-              propertyName: "Westlands Plaza",
-              startDate: "2024-01-01",
-              endDate: "2024-12-31",
-              monthlyRent: 45000,
-              securityDeposit: 90000,
-              leaseType: "yearly",
-              status: "active",
-              renewalOption: true,
-              specialTerms: "Pet allowed with additional deposit",
-              documentUrl: "/leases/john-doe-2024.pdf",
-            },
-            {
-              id: "2",
-              tenantName: "Jane Smith",
-              tenantEmail: "jane.smith@email.com",
-              tenantPhone: "+254798765432",
-              unitNumber: "1B",
-              propertyName: "Kilimani Heights Apartments",
-              startDate: "2024-03-01",
-              endDate: "2024-11-30",
-              monthlyRent: 35000,
-              securityDeposit: 70000,
-              leaseType: "fixed",
-              status: "expiring_soon",
-              renewalOption: true,
-              renewalNoticeDate: "2024-09-30",
-            },
-            {
-              id: "3",
-              tenantName: "Alice Brown",
-              tenantEmail: "alice.brown@email.com",
-              tenantPhone: "+254734567890",
-              unitNumber: "3C",
-              propertyName: "Karen Residences",
-              startDate: "2023-06-01",
-              endDate: "2024-05-31",
-              monthlyRent: 65000,
-              securityDeposit: 130000,
-              leaseType: "yearly",
-              status: "renewed",
-              renewalOption: false,
-              lastRenewalDate: "2024-06-01",
-              specialTerms: "Commercial use permitted",
-            },
-          ];
-          // Save sample data to localStorage
-          for (const lease of sampleLeases) {
-            await localLeaseService.create(lease);
-          }
-          setLeases(sampleLeases);
-        }
-      } catch (error) {
-        console.error("Failed to load leases:", error);
-      }
-    };
-    loadLeases();
-  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -372,9 +261,10 @@ export default function LeasesPage() {
     }
   };
 
-  const getDaysUntilExpiry = (endDate: string) => {
+  // Update the getDaysUntilExpiry function to handle both Date and string inputs
+  const getDaysUntilExpiry = (endDate: Date | string) => {
     const today = new Date();
-    const expiry = new Date(endDate);
+    const expiry = endDate instanceof Date ? endDate : new Date(endDate);
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
@@ -436,6 +326,18 @@ export default function LeasesPage() {
         return 0;
     }
   };
+
+  // Add loading state
+  if (leasesLoading || tenantsLoading || unitsLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-secondary-600 dark:text-secondary-400">Loading data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -663,8 +565,8 @@ export default function LeasesPage() {
                     <div className="flex items-center space-x-2">
                       <Calendar className="h-4 w-4 text-secondary-400" />
                       <span className="text-secondary-600 dark:text-secondary-400">
-                        {new Date(lease.startDate).toLocaleDateString()} -{" "}
-                        {new Date(lease.endDate).toLocaleDateString()}
+                        {lease.startDate.toLocaleDateString()} -{" "}
+                        {lease.endDate.toLocaleDateString()}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -716,13 +618,13 @@ export default function LeasesPage() {
                   {lease.lastRenewalDate && (
                     <span>
                       Last Renewed:{" "}
-                      {new Date(lease.lastRenewalDate).toLocaleDateString()}
+                      {lease.lastRenewalDate.toLocaleDateString()}
                     </span>
                   )}
                   {lease.renewalNoticeDate && (
                     <span>
                       Notice Date:{" "}
-                      {new Date(lease.renewalNoticeDate).toLocaleDateString()}
+                      {lease.renewalNoticeDate.toLocaleDateString()}
                     </span>
                   )}
                 </div>
@@ -772,6 +674,7 @@ export default function LeasesPage() {
           </p>
         </div>
       )}
+
       {/* New Lease Modal */}
       {isNewLeaseOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1219,7 +1122,7 @@ export default function LeasesPage() {
                     name="startDate"
                     type="date"
                     className="input-field"
-                    defaultValue={selectedLease.startDate}
+                    defaultValue={selectedLease.startDate.toISOString().split('T')[0]}
                   />
                 </div>
                 <div>
@@ -1230,7 +1133,7 @@ export default function LeasesPage() {
                     name="endDate"
                     type="date"
                     className="input-field"
-                    defaultValue={selectedLease.endDate}
+                    defaultValue={selectedLease.endDate.toISOString().split('T')[0]}
                   />
                 </div>
               </div>
