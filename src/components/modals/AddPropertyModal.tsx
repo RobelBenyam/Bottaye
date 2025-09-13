@@ -21,11 +21,13 @@ type PropertyFormData = z.infer<typeof propertySchema>;
 interface AddPropertyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (data: PropertyFormData) => void;
 }
 
 export default function AddPropertyModal({
   isOpen,
   onClose,
+  onSubmit: onModalSubmit,
 }: AddPropertyModalProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedImages, setSelectedImages] = React.useState<string[]>([]);
@@ -82,19 +84,15 @@ export default function AddPropertyModal({
     setIsLoading(true);
     try {
       const { propertyService } = await import("../../services/database");
-      // Upload images to Cloudinary and get URLs
       const uploadedImageUrls = await Promise.all(
         selectedImages.map(async (imageDataUrl, index) => {
-          // Convert data URL to Blob
           const res = await fetch(imageDataUrl);
           const blob = await res.blob();
-          // Upload to Cloudinary
           const imageUrl = await uploadFileToCloudinary(blob, "properties");
           return imageUrl;
         })
       );
 
-      // Create property with image URLs
       const currUser = user || { id: "demo-admin", name: "Demo Admin" }; // Fallback to demo user if not logged in
 
       await propertyService.create({

@@ -3,8 +3,6 @@ import { toast } from "react-hot-toast";
 import { maintenanceService } from "../services/database";
 import { Maintenance } from "../types";
 
-// A simplified async operation handler for this example
-// In a real app, this might be a more robust, shared hook.
 function useAsyncOperation<T>() {
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +44,6 @@ export function useMaintenance(propertyIds?: string[]) {
   const { execute, loading: operationLoading } = useAsyncOperation<any>();
 
   const fetchMaintenance = useCallback(async () => {
-    // Do not fetch if propertyIds is not yet available (e.g., user is loading)
     if (propertyIds === undefined) {
       return;
     }
@@ -54,14 +51,11 @@ export function useMaintenance(propertyIds?: string[]) {
     setLoading(true);
     try {
       let data: Maintenance[] = [];
-      // If the manager has no properties, return an empty array.
       if (propertyIds.length === 0) {
         data = [];
       } else if (propertyIds.length === 1) {
         data = await maintenanceService.getByPropertyId(propertyIds[0]);
       } else {
-        // Firestore 'in' query is limited to 10 items.
-        // For a production app, you might need to chunk this for arrays > 10.
         data = await maintenanceService.getByPropertyIds(propertyIds);
       }
       setMaintenance(data);
@@ -71,9 +65,8 @@ export function useMaintenance(propertyIds?: string[]) {
     } finally {
       setLoading(false);
     }
-  }, [propertyIds]); // useCallback depends on the propertyIds array
+  }, [propertyIds]);
 
-  // Effect to fetch data when the component mounts or propertyIds change.
   useEffect(() => {
     fetchMaintenance();
   }, [fetchMaintenance]);
@@ -97,7 +90,7 @@ export function useMaintenance(propertyIds?: string[]) {
       "Maintenance request created successfully."
     );
     if (id) {
-      await fetchMaintenance(); // Refresh the list to get the new, enriched item
+      await fetchMaintenance();
     }
     return id;
   };
@@ -113,7 +106,7 @@ export function useMaintenance(propertyIds?: string[]) {
       () => maintenanceService.update(id, updates),
       "Maintenance request updated successfully."
     );
-    await fetchMaintenance(); // Refresh list
+    await fetchMaintenance();
   };
 
   /**
@@ -124,9 +117,8 @@ export function useMaintenance(propertyIds?: string[]) {
       () => maintenanceService.delete(id),
       "Maintenance request deleted successfully."
     );
-    // Optimistic UI update could be done here before refetching
     setMaintenance((prev) => prev.filter((req) => req.id !== id));
-    await fetchMaintenance(); // Fetch to ensure consistency
+    await fetchMaintenance();
   };
 
   return {
