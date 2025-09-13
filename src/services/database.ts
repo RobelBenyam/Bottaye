@@ -25,11 +25,28 @@ const COLLECTIONS = {
   MAINTENANCE: "maintenance",
   USERS: "users",
   LEASES: "leases",
+  ACTIVITIES: "activities",
 } as const;
 
-// Helper to convert Firestore Timestamp to Date, handling null/undefined
 const toDate = (timestamp: Timestamp | undefined | null): Date | undefined => {
   return timestamp instanceof Timestamp ? timestamp.toDate() : undefined;
+};
+
+export const logActivity = async (
+  userId: string,
+  action: string,
+  type: "property" | "unit" | "tenant" | "lease" | "payment" | "maintenance"
+): Promise<void> => {
+  try {
+    await addDoc(collection(db, COLLECTIONS.ACTIVITIES), {
+      userId,
+      action,
+      type,
+      time: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error("Error logging activity:", error);
+  }
 };
 
 // Property operations
@@ -42,6 +59,13 @@ export const propertyService = {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
+    if (propertyData.managerId) {
+      await logActivity(
+        propertyData.managerId,
+        `New property created: ${propertyData.name}`,
+        "property"
+      );
+    }
     return docRef.id;
   },
 
@@ -100,11 +124,24 @@ export const unitService = {
   async create(
     unitData: Omit<Unit, "id" | "createdAt" | "updatedAt">
   ): Promise<string> {
+    const property = await propertyService.getById(unitData.propertyId);
+    if (!property) {
+      throw new Error(`Property with id ${unitData.propertyId} not found`);
+    }
+
     const docRef = await addDoc(collection(db, COLLECTIONS.UNITS), {
       ...unitData,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
+
+    if (property.managerId) {
+      await logActivity(
+        property.managerId,
+        `New unit created: ${unitData.unitNumber} in ${unitData.propertyName}`,
+        "unit"
+      );
+    }
     return docRef.id;
   },
 
@@ -389,6 +426,26 @@ export const paymentService = {
   async delete(id: string): Promise<void> {
     const docRef = doc(db, COLLECTIONS.PAYMENTS, id);
     await deleteDoc(docRef);
+  },
+
+  getByPropertyIds: async (propertyIds: string[]): Promise<Payment[]> => {
+    if (!propertyIds || propertyIds.length === 0) return [];
+
+    const querySnapshot = await getDocs(
+      query(
+        collection(db, COLLECTIONS.PAYMENTS),
+        where("propertyId", "in", propertyIds),
+        orderBy("dueDate", "desc")
+      )
+    );
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      dueDate: toDate(doc.data().dueDate),
+      paidDate: toDate(doc.data().paidDate),
+      createdAt: toDate(doc.data().createdAt),
+      updatedAt: toDate(doc.data().updatedAt),
+    })) as Payment[];
   },
 };
 
