@@ -21,11 +21,13 @@ type PropertyFormData = z.infer<typeof propertySchema>;
 interface AddPropertyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: () => void;
 }
 
 export default function AddPropertyModal({
   isOpen,
   onClose,
+  onSubmit: onModalSubmit,
 }: AddPropertyModalProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedImages, setSelectedImages] = React.useState<string[]>([]);

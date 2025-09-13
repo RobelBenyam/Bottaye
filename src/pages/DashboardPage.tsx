@@ -7,16 +7,42 @@ import {
   TrendingDown,
   Home,
   DollarSign,
-  Plus,
+  ChevronDown,
+  Wrench,
+  FileText,
 } from "lucide-react";
 import { useRecentActivities } from "../hooks/useRecentActivities";
 import { formatCurrency, formatNumber } from "../utils/currency";
 import LoadingSpinner from "../components/LoadingSpinner";
 import { useDashboardStats } from "../hooks/useDashboardStats";
+import { Menu } from "@headlessui/react";
+import { useState } from "react";
+import AddPropertyModal from "../components/modals/AddPropertyModal";
+import AddUnitModal from "../components/modals/AddUnitModal";
+import AddTenantModal from "../components/modals/AddTenantModal";
+import AddMaintenanceRequestModal from "../components/modals/AddMaintenanceRequest";
+import AddLeaseModal from "../components/modals/AddLeaseModal";
+import { useLeases } from "@/hooks/leasesHook";
+import { useTenantsForUser } from "@/hooks/tenantsHook";
+import { useUnitsForUser } from "@/hooks/unitsHook";
+import { useProperties } from "@/hooks/propertiesHook";
 
 export default function DashboardPage() {
   const { stats, loading } = useDashboardStats();
   const { activities, loading: activitiesLoading } = useRecentActivities(10);
+  const [isAddPropertyModalOpen, setIsAddPropertyModalOpen] = useState(false);
+  const [isAddUnitModalOpen, setIsAddUnitModalOpen] = useState(false);
+  const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
+  const [isAddMaintenanceModalOpen, setIsAddMaintenanceModalOpen] =
+    useState(false);
+  const [isAddLeaseModalOpen, setIsAddLeaseModalOpen] = useState(false);
+
+  const { createLease } = useLeases();
+  const { tenants } = useTenantsForUser();
+  const { units } = useUnitsForUser();
+  const { properties } = useProperties();
+
+  const availableUnits = units.filter((unit) => unit.status === "vacant");
 
   if (loading || !stats) {
     return (
@@ -132,7 +158,7 @@ export default function DashboardPage() {
             Welcome back! Here's what's happening with your properties.
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right relative">
           <div className="text-sm text-secondary-500 dark:text-secondary-400">
             Last updated:{" "}
             {new Date().toLocaleString("en-KE", {
@@ -142,10 +168,111 @@ export default function DashboardPage() {
               minute: "2-digit",
             })}
           </div>
-          <button className="btn-primary mt-2">
-            <Plus className="h-4 w-4 mr-2" />
-            Quick Action
-          </button>
+          <Menu as="div" className="relative inline-block text-left mt-2">
+            <div>
+              <Menu.Button className="btn-primary flex items-center">
+                Quick Action
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Menu.Button>
+            </div>
+            <Menu.Items className="absolute right-0 mt-2 w-56 origin-top-right bg-white dark:bg-secondary-800 divide-y divide-secondary-100 dark:divide-secondary-700 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+              <div className="px-1 py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setIsAddPropertyModalOpen(true)}
+                      className={`${
+                        active
+                          ? "bg-primary-500 text-white"
+                          : "text-secondary-900 dark:text-secondary-100"
+                      } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                    >
+                      <Building2 className="mr-2 h-5 w-5" />
+                      Add Property
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setIsAddUnitModalOpen(true)}
+                      className={`${
+                        active
+                          ? "bg-primary-500 text-white"
+                          : "text-secondary-900 dark:text-secondary-100"
+                      } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                    >
+                      <Home className="mr-2 h-5 w-5" />
+                      Add Unit
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
+              <div className="px-1 py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setIsAddTenantModalOpen(true)}
+                      className={`${
+                        active
+                          ? "bg-primary-500 text-white"
+                          : "text-secondary-900 dark:text-secondary-100"
+                      } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                    >
+                      <Users className="mr-2 h-5 w-5" />
+                      Add Tenant
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setIsAddLeaseModalOpen(true)}
+                      className={`${
+                        active
+                          ? "bg-primary-500 text-white"
+                          : "text-secondary-900 dark:text-secondary-100"
+                      } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                    >
+                      <FileText className="mr-2 h-5 w-5" />
+                      Add Lease
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
+              <div className="px-1 py-1">
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setIsAddMaintenanceModalOpen(true)}
+                      className={`${
+                        active
+                          ? "bg-primary-500 text-white"
+                          : "text-secondary-900 dark:text-secondary-100"
+                      } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                    >
+                      <Wrench className="mr-2 h-5 w-5" />
+                      New Maintenance
+                    </button>
+                  )}
+                </Menu.Item>
+                <Menu.Item>
+                  {({ active }) => (
+                    <button
+                      className={`${
+                        active
+                          ? "bg-primary-500 text-white"
+                          : "text-secondary-900 dark:text-secondary-100"
+                      } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                    >
+                      <CreditCard className="mr-2 h-5 w-5" />
+                      Record Payment
+                    </button>
+                  )}
+                </Menu.Item>
+              </div>
+            </Menu.Items>
+          </Menu>
         </div>
       </div>
 
@@ -305,6 +432,50 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      <AddPropertyModal
+        isOpen={isAddPropertyModalOpen}
+        onClose={() => setIsAddPropertyModalOpen(false)}
+        onSubmit={async () => {
+          // Handle property submission
+          setIsAddPropertyModalOpen(false);
+        }}
+      />
+      <AddUnitModal
+        isOpen={isAddUnitModalOpen}
+        onClose={() => setIsAddUnitModalOpen(false)}
+        onSubmit={async () => {
+          // Handle unit submission
+          setIsAddUnitModalOpen(false);
+        }}
+        properties={properties} // Pass required props
+      />
+      <AddTenantModal
+        isOpen={isAddTenantModalOpen}
+        onClose={() => setIsAddTenantModalOpen(false)}
+        onSubmit={async () => {
+          // Handle tenant submission
+          setIsAddTenantModalOpen(false);
+        }}
+        availableUnits={availableUnits} // Pass required props
+      />
+      <AddMaintenanceRequestModal
+        isOpen={isAddMaintenanceModalOpen}
+        setIsOpen={setIsAddMaintenanceModalOpen}
+        properties={properties}
+        units={units}
+        tenants={tenants}
+        onCreateRequest={async () => {
+          // Handle maintenance request submission
+          setIsAddMaintenanceModalOpen(false);
+        }}
+      />
+      <AddLeaseModal
+        isOpen={isAddLeaseModalOpen}
+        onClose={() => setIsAddLeaseModalOpen(false)}
+        tenants={tenants}
+        availableUnits={availableUnits}
+        createLease={createLease}
+      />
     </div>
   );
 }
