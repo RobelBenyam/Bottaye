@@ -92,7 +92,7 @@ export interface Payment {
 export interface Maintenance {
   id: string;
   propertyId: string;
-  propertyName: string;
+  propertyName?: string;
   unitId?: string;
   unitNumber?: string;
   tenantId?: string;
@@ -106,15 +106,34 @@ export interface Maintenance {
     | "structural"
     | "cleaning"
     | "pest_control"
-    | "other";
+    | "other"
+    | "appliance";
   priority: "low" | "medium" | "high" | "urgent";
   status: "pending" | "in_progress" | "completed" | "cancelled";
   assignedTo?: string;
   estimatedCost?: number;
   actualCost?: number;
+  reportedDate: Date;
+  scheduledDate?: Date;
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
+}
+
+export interface NewMaintenanceForm {
+  propertyId: string;
+  unitId: string;
+  tenantId: string;
+  requestType: "plumbing" | "electrical" | "appliance" | "cleaning" | "other";
+  description: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  reportedDate: string;
+  scheduledDate: string;
+  completedDate: string;
+  assignedTo: string;
+  estimatedCost: number | "";
+  actualCost: number | "";
+  title: string;
 }
 
 export interface DashboardStats {
@@ -135,31 +154,6 @@ export interface PaymentSummary {
   totalOverdue: number;
   thisMonth: number;
   lastMonth: number;
-}
-
-export interface MaintenanceRequest {
-  id: string;
-  title: string;
-  description: string;
-  priority: "low" | "medium" | "high" | "urgent";
-  status: "pending" | "in_progress" | "completed" | "cancelled";
-  unitNumber: string;
-  propertyName: string;
-  tenantName: string;
-  reportedDate: string;
-  scheduledDate?: string;
-  completedDate?: string;
-  assignedTo?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  category:
-    | "plumbing"
-    | "electrical"
-    | "hvac"
-    | "appliance"
-    | "structural"
-    | "cleaning"
-    | "other";
 }
 
 export interface Lease {
