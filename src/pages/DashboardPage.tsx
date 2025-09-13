@@ -23,9 +23,10 @@ import AddTenantModal from "../components/modals/AddTenantModal";
 import AddMaintenanceRequestModal from "../components/modals/AddMaintenanceRequest";
 import AddLeaseModal from "../components/modals/AddLeaseModal";
 import { useLeases } from "@/hooks/leasesHook";
-import { useTenantsForUser } from "@/hooks/tenantsHook";
-import { useUnitsForUser } from "@/hooks/unitsHook";
+import { useTenantsForUser, useTenants } from "@/hooks/tenantsHook";
+import { useUnitsForUser, useUnits } from "@/hooks/unitsHook";
 import { useProperties } from "@/hooks/propertiesHook";
+import { useMaintenance } from "@/hooks/maintenanceHook";
 
 export default function DashboardPage() {
   const { stats, loading } = useDashboardStats();
@@ -40,7 +41,11 @@ export default function DashboardPage() {
   const { createLease } = useLeases();
   const { tenants } = useTenantsForUser();
   const { units } = useUnitsForUser();
-  const { properties } = useProperties();
+  const { properties, createProperty } = useProperties();
+  const { createUnit } = useUnits();
+  const { createTenant } = useTenants();
+  const propertyIds = properties.map((p) => p.id);
+  const { createMaintenance } = useMaintenance(propertyIds);
 
   const availableUnits = units.filter((unit) => unit.status === "vacant");
 
@@ -435,28 +440,42 @@ export default function DashboardPage() {
       <AddPropertyModal
         isOpen={isAddPropertyModalOpen}
         onClose={() => setIsAddPropertyModalOpen(false)}
-        onSubmit={async () => {
-          // Handle property submission
+        onSubmit={async (propertyData: any) => {
+          await createProperty(propertyData);
           setIsAddPropertyModalOpen(false);
         }}
       />
       <AddUnitModal
         isOpen={isAddUnitModalOpen}
         onClose={() => setIsAddUnitModalOpen(false)}
-        onSubmit={async () => {
-          // Handle unit submission
+        onSubmit={async (unitData) => {
+          await createUnit({
+            ...unitData,
+            propertyName:
+              properties.find((p) => p.id === unitData.propertyId)?.name || "",
+            status: "vacant",
+          });
           setIsAddUnitModalOpen(false);
         }}
-        properties={properties} // Pass required props
+        properties={properties}
       />
       <AddTenantModal
         isOpen={isAddTenantModalOpen}
         onClose={() => setIsAddTenantModalOpen(false)}
-        onSubmit={async () => {
-          // Handle tenant submission
+        onSubmit={async (tenantData) => {
+          await createTenant({
+            ...tenantData,
+            leaseStartDate: new Date(tenantData.leaseStartDate),
+            leaseEndDate: new Date(tenantData.leaseEndDate),
+            emergencyContact: {
+              name: tenantData.emergencyContactName,
+              phone: tenantData.emergencyContactPhone,
+              relationship: tenantData.emergencyContactRelationship,
+            },
+          });
           setIsAddTenantModalOpen(false);
         }}
-        availableUnits={availableUnits} // Pass required props
+        availableUnits={availableUnits}
       />
       <AddMaintenanceRequestModal
         isOpen={isAddMaintenanceModalOpen}
@@ -464,8 +483,24 @@ export default function DashboardPage() {
         properties={properties}
         units={units}
         tenants={tenants}
-        onCreateRequest={async () => {
-          // Handle maintenance request submission
+        onCreateRequest={async (requestData) => {
+          await createMaintenance({
+            ...requestData,
+            category: requestData.requestType,
+            status: "pending",
+            reportedDate: new Date(requestData.reportedDate),
+            scheduledDate: requestData.scheduledDate
+              ? new Date(requestData.scheduledDate)
+              : undefined,
+            estimatedCost:
+              typeof requestData.estimatedCost === "number"
+                ? requestData.estimatedCost
+                : undefined,
+            actualCost:
+              typeof requestData.actualCost === "number"
+                ? requestData.actualCost
+                : undefined,
+          });
           setIsAddMaintenanceModalOpen(false);
         }}
       />

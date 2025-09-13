@@ -112,7 +112,6 @@ export default function AddMaintenanceRequest(
     setLoading(true);
     try {
       await onCreateRequest(form);
-      // The parent component is responsible for closing the modal on success
     } catch (err) {
       console.error(err);
       alert("Failed to create the maintenance request. Please try again.");

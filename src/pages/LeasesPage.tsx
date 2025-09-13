@@ -22,6 +22,7 @@ import { useLeases } from "@/hooks/leasesHook";
 import { Lease } from "../types";
 import AddLeaseModal from "../components/modals/AddLeaseModal";
 import EditLeaseModal from "../components/modals/EditLeaseModal";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 export default function LeasesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,7 +35,6 @@ export default function LeasesPage() {
   const [selectedLease, setSelectedLease] = useState<Lease | null>(null);
   const [isEditLeaseOpen, setIsEditLeaseOpen] = useState(false);
 
-  // Use hooks for user-filtered data
   const { tenants, loading: tenantsLoading } = useTenantsForUser();
   const { units: allUnits, loading: unitsLoading } = useUnitsForUser();
   const {
@@ -83,7 +83,6 @@ export default function LeasesPage() {
     }
   };
 
-  // Update the getDaysUntilExpiry function to handle both Date and string inputs
   const getDaysUntilExpiry = (endDate: Date | string) => {
     const today = new Date();
     const expiry = endDate instanceof Date ? endDate : new Date(endDate);
@@ -101,7 +100,6 @@ export default function LeasesPage() {
       filterStatus === "all" || lease.status === filterStatus;
     const matchesType = filterType === "all" || lease.leaseType === filterType;
 
-    // Filter by tab
     if (activeTab === "active") {
       return (
         matchesSearch &&
@@ -149,18 +147,8 @@ export default function LeasesPage() {
     }
   };
 
-  // Add loading state
   if (leasesLoading || tenantsLoading || unitsLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-secondary-600 dark:text-secondary-400">
-            Loading data...
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner size="lg" />;
   }
 
   return (

@@ -30,7 +30,6 @@ import { useTenantsForUser } from "@/hooks/tenantsHook";
 import AddMaintenanceRequest from "@/components/modals/AddMaintenanceRequest";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-// Helper to format dates safely, returning a fallback if the date is invalid
 const formatDate = (date: string | Date | undefined): string => {
   if (!date) return "N/A";
   try {

@@ -461,54 +461,54 @@ export const maintenanceService = {
       ...new Set(maintenanceRequests.map((req) => req.propertyId)),
     ];
     const unitIds = [
-      ...new Set(maintenanceRequests.map((req) => req.unitId).filter(Boolean)),
-    ];
+      ...new Set(
+        maintenanceRequests.map((req) => req.unitId).filter((id) => !!id)
+      ),
+    ] as string[];
     const tenantIds = [
       ...new Set(
-        maintenanceRequests.map((req) => req.tenantId).filter(Boolean)
+        maintenanceRequests.map((req) => req.tenantId).filter((id) => !!id)
       ),
-    ];
+    ] as string[];
 
-    const [propertiesSnapshot, unitsSnapshot, tenantsSnapshot] =
-      await Promise.all([
-        propertyIds.length > 0
-          ? getDocs(
-              query(
-                collection(db, COLLECTIONS.PROPERTIES),
-                where("__name__", "in", propertyIds) // Use __name__ for document ID
-              )
-            )
-          : Promise.resolve(null),
-        unitIds.length > 0
-          ? getDocs(
-              query(
-                collection(db, COLLECTIONS.UNITS),
-                where("__name__", "in", unitIds) // Use __name__ for document ID
-              )
-            )
-          : Promise.resolve(null),
-        tenantIds.length > 0
-          ? getDocs(
-              query(
-                collection(db, COLLECTIONS.TENANTS),
-                where("__name__", "in", tenantIds) // Use __name__ for document ID
-              )
-            )
-          : Promise.resolve(null),
-      ]);
+    const chunk = <T>(arr: T[], size: number): T[][] =>
+      Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+        arr.slice(i * size, i * size + size)
+      );
+
+    const fetchDocsInChunks = async (collectionName: string, ids: string[]) => {
+      if (ids.length === 0) return [];
+      const idChunks = chunk(ids, 30); // Firestore 'in' query limit is 30
+      const queryPromises = idChunks.map((idChunk) =>
+        getDocs(
+          query(
+            collection(db, collectionName),
+            where("__name__", "in", idChunk)
+          )
+        )
+      );
+      const querySnapshots = await Promise.all(queryPromises);
+      return querySnapshots.flatMap((snapshot) => snapshot.docs);
+    };
+
+    const [propertyDocs, unitDocs, tenantDocs] = await Promise.all([
+      fetchDocsInChunks(COLLECTIONS.PROPERTIES, propertyIds),
+      fetchDocsInChunks(COLLECTIONS.UNITS, unitIds),
+      fetchDocsInChunks(COLLECTIONS.TENANTS, tenantIds),
+    ]);
 
     const propertiesMap =
-      propertiesSnapshot?.docs.reduce((acc, doc) => {
+      propertyDocs.reduce((acc, doc) => {
         acc[doc.id] = doc.data() as Property;
         return acc;
       }, {} as { [key: string]: Property }) || {};
     const unitsMap =
-      unitsSnapshot?.docs.reduce((acc, doc) => {
+      unitDocs.reduce((acc, doc) => {
         acc[doc.id] = doc.data() as Unit;
         return acc;
       }, {} as { [key: string]: Unit }) || {};
     const tenantsMap =
-      tenantsSnapshot?.docs.reduce((acc, doc) => {
+      tenantDocs.reduce((acc, doc) => {
         acc[doc.id] = doc.data() as Tenant;
         return acc;
       }, {} as { [key: string]: Tenant }) || {};
@@ -729,10 +729,7 @@ export const dbUtils = {
     operator: WhereFilterOp,
     value: any
   ): Promise<T[]> {
-    const collectionRef = collection(db, collectionName);
-    const q = query(collectionRef, where(field, operator, value));
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((docSnap) => {
+    const processDoc = (docSnap: any) => {
       const data = docSnap.data();
       return {
         id: docSnap.id,
@@ -751,8 +748,32 @@ export const dbUtils = {
         leaseEndDate: toDate(data.leaseEndDate), // For tenants
         lastRenewalDate: toDate(data.lastRenewalDate), // For leases
         renewalNoticeDate: toDate(data.renewalNoticeDate), // For leases
-      };
-    }) as T[];
+      } as T;
+    };
+
+    if (operator === "in" && Array.isArray(value) && value.length > 30) {
+      const chunk = <T>(arr: T[], size: number): T[][] =>
+        Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+          arr.slice(i * size, i * size + size)
+        );
+
+      const valueChunks = chunk(value, 30);
+      const queryPromises = valueChunks.map((chunk) =>
+        getDocs(
+          query(collection(db, collectionName), where(field, "in", chunk))
+        )
+      );
+
+      const querySnapshots = await Promise.all(queryPromises);
+      return querySnapshots.flatMap((snapshot) =>
+        snapshot.docs.map(processDoc)
+      );
+    }
+
+    const collectionRef = collection(db, collectionName);
+    const q = query(collectionRef, where(field, operator, value));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(processDoc);
   },
 };
 
