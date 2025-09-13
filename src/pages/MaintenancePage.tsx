@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Plus,
   Search,
@@ -11,76 +11,153 @@ import {
   User,
   MapPin,
   DollarSign,
+  Pencil,
+  Trash,
 } from "lucide-react";
-import { MaintenanceRequest } from "@/types";
 
-export default function MaintenancePage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+import { useMaintenance } from "@/hooks/maintenanceHook";
+import {
+  Maintenance,
+  NewMaintenanceForm,
+  Property,
+  Unit,
+  Tenant,
+} from "@/types";
+import { useAuthStore } from "@/stores/authStore";
+import { useProperties } from "@/hooks/propertiesHook";
+import { useUnitsForUser } from "@/hooks/unitsHook";
+import { useTenantsForUser } from "@/hooks/tenantsHook";
+import AddMaintenanceRequest from "@/components/modals/AddMaintenanceRequest";
+import LoadingSpinner from "@/components/LoadingSpinner";
+
+// Helper to format dates safely, returning a fallback if the date is invalid
+const formatDate = (date: string | Date | undefined): string => {
+  if (!date) return "N/A";
+  try {
+    return new Date(date).toLocaleDateString();
+  } catch (error) {
+    return "Invalid Date";
+  }
+};
+
+const MaintenancePage: React.FC = () => {
   const [filterPriority, setFilterPriority] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+  const [isEditRequestOpen, setIsEditRequestOpen] = useState(false);
+  const [editRequest, setEditRequest] = useState<Maintenance | null>(null);
+  const [deleteRequestId, setDeleteRequestId] = useState<string | null>(null);
 
-  // Mock data
-  const maintenanceRequests: MaintenanceRequest[] = [
-    {
-      id: "1",
-      title: "Leaking Kitchen Faucet",
-      description:
-        "Kitchen faucet has been dripping constantly for the past week",
-      priority: "medium",
-      status: "pending",
-      unitNumber: "2A",
-      propertyName: "Westlands Plaza",
-      tenantName: "John Doe",
-      reportedDate: "2024-09-10",
-      category: "plumbing",
-      estimatedCost: 5000,
-    },
-    {
-      id: "2",
-      title: "Air Conditioning Not Working",
-      description:
-        "AC unit stopped working yesterday. Room is getting very hot.",
-      priority: "high",
-      status: "in_progress",
-      unitNumber: "1B",
-      propertyName: "Kilimani Heights Apartments",
-      tenantName: "Jane Smith",
-      reportedDate: "2024-09-08",
-      scheduledDate: "2024-09-11",
-      assignedTo: "Mike Johnson - HVAC Tech",
-      category: "hvac",
-      estimatedCost: 15000,
-    },
-    {
-      id: "3",
-      title: "Broken Ceiling Light",
-      description: "Main bedroom ceiling light fixture fell down",
-      priority: "urgent",
-      status: "completed",
-      unitNumber: "3C",
-      propertyName: "Karen Residences",
-      tenantName: "Alice Brown",
-      reportedDate: "2024-09-05",
-      completedDate: "2024-09-06",
-      assignedTo: "David Wilson - Electrician",
-      category: "electrical",
-      estimatedCost: 8000,
-      actualCost: 7500,
-    },
-    {
-      id: "4",
-      title: "Clogged Bathroom Drain",
-      description: "Bathroom sink drain is completely blocked",
-      priority: "medium",
-      status: "pending",
-      unitNumber: "1A",
-      propertyName: "Kilimani Heights Apartments",
-      tenantName: "Michael Johnson",
-      reportedDate: "2024-09-09",
-      category: "plumbing",
-      estimatedCost: 3000,
-    },
-  ];
+  const { user } = useAuthStore();
+  const { properties, loading: propertiesLoading } = useProperties();
+  const { units, loading: unitsLoading } = useUnitsForUser();
+  const { tenants, loading: tenantsLoading } = useTenantsForUser();
+
+  const userProperties: Property[] = useMemo(
+    () => (user ? properties.filter((p) => p.managerId === user.id) : []),
+    [properties, user]
+  );
+
+  const propertyIds: string[] = useMemo(
+    () => userProperties.map((p) => p.id),
+    [userProperties]
+  );
+
+  const userUnits: Unit[] = useMemo(
+    () => units.filter((u) => propertyIds.includes(u.propertyId)),
+    [units, propertyIds]
+  );
+
+  const userTenants: Tenant[] = useMemo(
+    () =>
+      tenants.filter((t) => t.propertyId && propertyIds.includes(t.propertyId)),
+    [tenants, propertyIds]
+  );
+
+  const {
+    maintenance,
+    loading: maintenanceLoading,
+    createMaintenance,
+    updateMaintenance,
+    deleteMaintenance,
+  } = useMaintenance(propertyIds);
+
+  const handleCreateRequest = async (formData: NewMaintenanceForm) => {
+    const maintenanceData = {
+      ...formData,
+      category: formData.requestType,
+      reportedDate: new Date(formData.reportedDate),
+      scheduledDate: formData.scheduledDate
+        ? new Date(formData.scheduledDate)
+        : undefined,
+      completedAt: formData.completedDate
+        ? new Date(formData.completedDate)
+        : undefined,
+      estimatedCost:
+        formData.estimatedCost === ""
+          ? undefined
+          : Number(formData.estimatedCost),
+      actualCost:
+        formData.actualCost === "" ? undefined : Number(formData.actualCost),
+      status: "pending" as const,
+    };
+
+    delete (maintenanceData as any).requestType;
+    delete (maintenanceData as any).completedDate;
+
+    try {
+      await createMaintenance(maintenanceData as any);
+      setIsNewRequestOpen(false);
+    } catch (err) {
+      console.error("Failed to create request:", err);
+    }
+  };
+
+  const handleEditRequest = (request: Maintenance) => {
+    setEditRequest(request);
+    setIsEditRequestOpen(true);
+  };
+
+  const handleUpdateRequest = async (formData: NewMaintenanceForm) => {
+    if (!editRequest) return;
+    const maintenanceData = {
+      ...formData,
+      category: formData.requestType,
+      reportedDate: new Date(formData.reportedDate),
+      scheduledDate: formData.scheduledDate
+        ? new Date(formData.scheduledDate)
+        : undefined,
+      completedAt: formData.completedDate
+        ? new Date(formData.completedDate)
+        : undefined,
+      estimatedCost:
+        formData.estimatedCost === ""
+          ? undefined
+          : Number(formData.estimatedCost),
+      actualCost:
+        formData.actualCost === "" ? undefined : Number(formData.actualCost),
+    };
+    delete (maintenanceData as any).requestType;
+    delete (maintenanceData as any).completedDate;
+    try {
+      await updateMaintenance(editRequest.id, maintenanceData as any);
+      setIsEditRequestOpen(false);
+      setEditRequest(null);
+    } catch (err) {
+      console.error("Failed to update request:", err);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!deleteRequestId) return;
+    try {
+      await deleteMaintenance(deleteRequestId);
+      setDeleteRequestId(null);
+    } catch (err) {
+      console.error("Failed to delete request:", err);
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -93,7 +170,7 @@ export default function MaintenancePage() {
       case "low":
         return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400";
       default:
-        return "bg-secondary-100 text-secondary-800 dark:bg-secondary-700 dark:text-secondary-300";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
   };
 
@@ -106,7 +183,7 @@ export default function MaintenancePage() {
       case "pending":
         return <AlertCircle className="h-5 w-5 text-yellow-600" />;
       default:
-        return <Wrench className="h-5 w-5 text-secondary-400" />;
+        return <Wrench className="h-5 w-5 text-gray-400" />;
     }
   };
 
@@ -121,33 +198,40 @@ export default function MaintenancePage() {
       case "cancelled":
         return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400";
       default:
-        return "bg-secondary-100 text-secondary-800 dark:bg-secondary-700 dark:text-secondary-300";
+        return "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
     }
   };
 
-  const filteredRequests = maintenanceRequests.filter((request) => {
-    const matchesSearch =
-      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.propertyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.tenantName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus =
-      filterStatus === "all" || request.status === filterStatus;
-    const matchesPriority =
-      filterPriority === "all" || request.priority === filterPriority;
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+  const filteredRequests = useMemo(() => {
+    return maintenance.filter((request: Maintenance) => {
+      const lowerCaseSearch = searchTerm.toLowerCase();
+      const matchesSearch =
+        (request.title ?? "").toLowerCase().includes(lowerCaseSearch) ||
+        (request.unitNumber ?? "").toLowerCase().includes(lowerCaseSearch) ||
+        (request.propertyName ?? "").toLowerCase().includes(lowerCaseSearch) ||
+        (request.tenantName ?? "").toLowerCase().includes(lowerCaseSearch);
+
+      const matchesStatus =
+        filterStatus === "all" || (request.status ?? "") === filterStatus;
+      const matchesPriority =
+        filterPriority === "all" || (request.priority ?? "") === filterPriority;
+
+      return matchesSearch && matchesStatus && matchesPriority;
+    });
+  }, [maintenance, searchTerm, filterStatus, filterPriority]);
+
+  const isLoading =
+    propertiesLoading || unitsLoading || tenantsLoading || maintenanceLoading;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-secondary-900 dark:text-secondary-100">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Maintenance Requests
           </h1>
-          <p className="text-secondary-600 dark:text-secondary-400 mt-1">
-            Track and manage property maintenance requests and schedules
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Track and manage property maintenance requests and schedules.
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -155,30 +239,32 @@ export default function MaintenancePage() {
             <Calendar className="h-5 w-5 mr-2" />
             Schedule
           </button>
-          <button className="btn-primary flex items-center">
+          <button
+            className="btn-primary flex items-center"
+            onClick={() => setIsNewRequestOpen(true)}
+          >
             <Plus className="h-5 w-5 mr-2" />
             New Request
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center space-x-4">
-        <div className="flex-1 max-w-md">
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <div className="flex-1 w-full md:max-w-md">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary-400 h-5 w-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <input
               type="text"
-              placeholder="Search requests, units, or tenants..."
-              className="input-field pl-10"
+              placeholder="Search by title, unit, property..."
+              className="input-field pl-10 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <Filter className="h-5 w-5 text-secondary-400" />
+        <div className="flex items-center space-x-2 w-full md:w-auto">
+          <Filter className="h-5 w-5 text-gray-400" />
           <select
             className="input-field"
             value={filterStatus}
@@ -205,107 +291,178 @@ export default function MaintenancePage() {
         </div>
       </div>
 
-      {/* Maintenance Requests Grid */}
-      <div className="grid grid-cols-1 gap-6">
-        {filteredRequests.map((request) => (
-          <div
-            key={request.id}
-            className="bg-white dark:bg-secondary-800 rounded-xl shadow-sm border border-secondary-200 dark:border-secondary-700 p-6 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-2">
-                  {getStatusIcon(request.status)}
-                  <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                    {request.title}
-                  </h3>
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(
-                      request.priority
-                    )}`}
-                  >
-                    {request.priority}
-                  </span>
-                </div>
-                <p className="text-secondary-600 dark:text-secondary-400 mb-3">
-                  {request.description}
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-4 w-4 text-secondary-400" />
-                    <span className="text-secondary-600 dark:text-secondary-400">
-                      Unit {request.unitNumber}, {request.propertyName}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <User className="h-4 w-4 text-secondary-400" />
-                    <span className="text-secondary-600 dark:text-secondary-400">
-                      {request.tenantName}
-                    </span>
-                  </div>
-                  {request.estimatedCost && (
-                    <div className="flex items-center space-x-2">
-                      <DollarSign className="h-4 w-4 text-secondary-400" />
-                      <span className="text-secondary-600 dark:text-secondary-400">
-                        Est. KES {request.estimatedCost.toLocaleString()}
+      {isLoading ? (
+        <div className="text-center py-12 flex flex-col items-center justify-center">
+          <LoadingSpinner size="lg" />
+          <p className="text-gray-500 mt-4">Loading maintenance requests...</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-6">
+            {filteredRequests.map((request: Maintenance) => (
+              <div
+                key={request.id}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-md transition-shadow"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3 mb-2">
+                      {getStatusIcon(request.status ?? "pending")}
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {request.title || "Untitled Request"}
+                      </h3>
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(
+                          request.priority ?? "medium"
+                        )}`}
+                      >
+                        {request.priority ?? "medium"}
                       </span>
+                      {/* Edit & Delete Buttons */}
+                      <button
+                        className="ml-2 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Edit Request"
+                        onClick={() => handleEditRequest(request)}
+                      >
+                        <Pencil className="w-4 h-4 text-blue-500" />
+                      </button>
+                      <button
+                        className="ml-1 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                        title="Delete Request"
+                        onClick={() => setDeleteRequestId(request.id)}
+                      >
+                        <Trash className="w-4 h-4 text-red-500" />
+                      </button>
                     </div>
-                  )}
-                </div>
-              </div>
+                    <p className="text-gray-600 dark:text-gray-400 mb-3">
+                      {request.description || "No description provided."}
+                    </p>
 
-              <div className="flex flex-col items-end space-y-2">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                    request.status
-                  )}`}
-                >
-                  {request.status.replace("_", " ")}
-                </span>
-                <span className="text-xs text-secondary-500">
-                  Reported:{" "}
-                  {new Date(request.reportedDate).toLocaleDateString()}
-                </span>
-                {request.scheduledDate && (
-                  <span className="text-xs text-blue-600 dark:text-blue-400">
-                    Scheduled:{" "}
-                    {new Date(request.scheduledDate).toLocaleDateString()}
-                  </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <span>
+                          Unit {request.unitNumber || "N/A"},{" "}
+                          {request.propertyName || "N/A"}
+                        </span>
+                      </div>
+                      <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span>{request.tenantName || "N/A"}</span>
+                      </div>
+                      {request.estimatedCost != null && (
+                        <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                          <DollarSign className="h-4 w-4 text-gray-400" />
+                          <span>
+                            Est. KES {request.estimatedCost.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end space-y-2 text-right">
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
+                        request.status ?? "pending"
+                      )}`}
+                    >
+                      {(request.status ?? "pending").replace("_", " ")}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Reported: {formatDate(request.reportedDate)}
+                    </span>
+                    {request.scheduledDate && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400">
+                        Scheduled: {formatDate(request.scheduledDate)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {request.assignedTo && (
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-600">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      Assigned to:{" "}
+                      <span className="font-medium">{request.assignedTo}</span>
+                    </span>
+                    {request.actualCost != null && (
+                      <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                        Actual: KES {request.actualCost.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
                 )}
+              </div>
+            ))}
+          </div>
+
+          {filteredRequests.length === 0 && !isLoading && (
+            <div className="text-center py-12">
+              <Wrench className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                No maintenance requests found
+              </p>
+              <p className="text-gray-600 dark:text-gray-400">
+                {searchTerm ||
+                filterStatus !== "all" ||
+                filterPriority !== "all"
+                  ? "Try adjusting your search or filter criteria."
+                  : "All new maintenance requests for your properties will appear here."}
+              </p>
+            </div>
+          )}
+
+          <AddMaintenanceRequest
+            isOpen={isNewRequestOpen}
+            setIsOpen={setIsNewRequestOpen}
+            properties={userProperties}
+            units={userUnits}
+            tenants={userTenants}
+            onCreateRequest={handleCreateRequest}
+          />
+          {/* Edit Maintenance Modal */}
+          <AddMaintenanceRequest
+            isOpen={isEditRequestOpen}
+            setIsOpen={setIsEditRequestOpen}
+            properties={userProperties}
+            units={userUnits}
+            tenants={userTenants}
+            onCreateRequest={handleUpdateRequest}
+            initialData={editRequest as any}
+          />
+          {/* Delete Confirmation Modal */}
+          {deleteRequestId && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  Confirm Delete
+                </h2>
+                <p className="mb-6 text-gray-700 dark:text-gray-300">
+                  Are you sure you want to delete this maintenance request? This
+                  action cannot be undone.
+                </p>
+                <div className="flex space-x-3">
+                  <button
+                    className="btn-secondary flex-1"
+                    onClick={() => setDeleteRequestId(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-danger flex-1"
+                    onClick={handleDeleteRequest}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
-
-            {request.assignedTo && (
-              <div className="flex items-center justify-between pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                  Assigned to:{" "}
-                  <span className="font-medium">{request.assignedTo}</span>
-                </span>
-                {request.actualCost && (
-                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                    Actual: KES {request.actualCost.toLocaleString()}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {filteredRequests.length === 0 && (
-        <div className="text-center py-12">
-          <Wrench className="h-16 w-16 text-secondary-300 dark:text-secondary-600 mx-auto mb-4" />
-          <p className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">
-            No maintenance requests found
-          </p>
-          <p className="text-secondary-600 dark:text-secondary-400">
-            {searchTerm || filterStatus !== "all" || filterPriority !== "all"
-              ? "Try adjusting your search or filter criteria"
-              : "All maintenance requests will appear here"}
-          </p>
-        </div>
+          )}
+        </>
       )}
     </div>
   );
-}
+};
+
+export default MaintenancePage;
