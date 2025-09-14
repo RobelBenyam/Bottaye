@@ -25,6 +25,7 @@ import {
 import { unitService } from "../services/database";
 import { localUnitService } from "../services/localStorage";
 import { Tenant } from "@/types";
+import { useTenants } from "@/hooks/tenantsHook";
 
 export default function TenantsPage() {
   const navigate = useNavigate();
@@ -68,33 +69,15 @@ export default function TenantsPage() {
     loadAvailableUnits();
   }, []);
 
-  const [tenants, setTenants] = useState<any[]>([]);
-
-  useEffect(() => {
-    const loadTenants = async () => {
-      try {
-        let fetchedTenants: Tenant[];
-        try {
-          fetchedTenants = await tenantService.getAll();
-        } catch (firebaseError) {
-          fetchedTenants = [];
-        }
-        setTenants(fetchedTenants);
-      } catch (error) {
-        console.error("Error loading tenants:", error);
-        setTenants([]);
-      }
-    };
-    loadTenants();
-  }, []);
+  const { tenants } = useTenants();
 
   const filteredTenants = tenants.filter(
     (tenant) =>
       tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tenant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tenant.phone.includes(searchTerm) ||
-      tenant.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tenant.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
+      tenant.unitNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.propertyName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatDate = (dateString: string) => {
@@ -179,7 +162,7 @@ export default function TenantsPage() {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {isLeaseExpiringSoon(tenant.leaseEndDate) && (
+                {isLeaseExpiringSoon(tenant.leaseEndDate?.toString() ?? "") && (
                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-warning-100 text-warning-700 dark:bg-warning-900/20 dark:text-warning-400">
                     Lease Expiring
                   </span>
@@ -226,7 +209,7 @@ export default function TenantsPage() {
                     Monthly Rent
                   </p>
                   <p className="font-semibold text-secondary-900 dark:text-secondary-100">
-                    {formatCurrency(tenant.rent)}
+                    {formatCurrency(tenant.rent ?? 0)}
                   </p>
                 </div>
                 <div>
@@ -234,7 +217,7 @@ export default function TenantsPage() {
                     Deposit
                   </p>
                   <p className="font-semibold text-secondary-900 dark:text-secondary-100">
-                    {formatCurrency(tenant.deposit)}
+                    {formatCurrency(tenant.deposit ?? 0)}
                   </p>
                 </div>
               </div>
@@ -243,8 +226,8 @@ export default function TenantsPage() {
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-secondary-400" />
                   <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                    {formatDate(tenant.leaseStartDate)} -{" "}
-                    {formatDate(tenant.leaseEndDate)}
+                    {formatDate(tenant.leaseStartDate?.toString() ?? "")} -{" "}
+                    {formatDate(tenant.leaseEndDate?.toString() ?? "")}
                   </span>
                 </div>
               </div>

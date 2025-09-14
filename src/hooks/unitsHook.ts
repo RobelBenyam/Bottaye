@@ -14,19 +14,44 @@ import { useAuthStore } from "@/stores/authStore";
 // Units hook
 export function useUnits(propertyId?: string) {
   const [units, setUnits] = useState<Unit[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const { execute, loading: operationLoading } = useAsyncOperation<
     string | void
   >();
+  const { user } = useAuthStore();
 
   const fetchUnits = async () => {
     setLoading(true);
     try {
-      const data = propertyId
-        ? await unitService.getByPropertyId(propertyId)
-        : await unitService.getAll();
-      setUnits(data);
+      // Fetch all required data in parallel
+      const [propertiesData, unitsData, tenantsData] = await Promise.all([
+        propertyService.getAll(),
+        unitService.getAll(),
+        tenantService.getAll(),
+      ]);
+
+      let filteredPropertyIds = propertiesData.map((property) => property.id);
+
+      if (propertyId && filteredPropertyIds.includes(propertyId)) {
+        filteredPropertyIds = [propertyId];
+      } else if (propertyId) {
+        filteredPropertyIds = [];
+      }
+
+      const filteredUnits = unitsData.filter((unit) =>
+        filteredPropertyIds.includes(unit.propertyId)
+      );
+      const unitIds = filteredUnits.map((unit) => unit.id);
+      const filteredTenants = tenantsData.filter(
+        (tenant) => tenant.unitId && unitIds.includes(tenant.unitId)
+      );
+      setTenants(filteredTenants);
+      setProperties(propertiesData);
+      setUnits(filteredUnits);
     } catch (error) {
+      console.error(error);
       toast.error("Failed to fetch units");
     } finally {
       setLoading(false);
@@ -65,6 +90,8 @@ export function useUnits(propertyId?: string) {
 
   return {
     units,
+    properties,
+    tenants,
     loading,
     operationLoading,
     createUnit,
@@ -85,6 +112,7 @@ export function useAvailableUnits() {
       const data = await unitService.getAvailableUnits();
       setAvailableUnits(data);
     } catch (error) {
+      console.error(error);
       toast.error("Failed to fetch available units");
     } finally {
       setLoading(false);
@@ -118,13 +146,9 @@ export function useUnitsForUser() {
     }
 
     try {
-      // Get user's properties first
       const userProperties = await propertyService.getByUserId(user.id);
       const propertyIds = userProperties.map((p) => p.id);
 
-      console.log("ids", propertyIds);
-
-      // Use efficient database query instead of fetching all then filtering
       if (propertyIds.length > 0) {
         const filteredUnits = await unitService.getByPropertyIds(propertyIds);
         setUnits(filteredUnits);

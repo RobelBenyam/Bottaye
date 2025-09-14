@@ -9,6 +9,7 @@ import {
   dbUtils,
 } from "../services/database";
 import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
+import { useAuthStore } from "@/stores/authStore";
 
 // Properties hook
 export function useProperties() {
@@ -17,14 +18,17 @@ export function useProperties() {
   const { execute, loading: operationLoading } = useAsyncOperation<
     string | void
   >();
+  const { user } = useAuthStore();
 
   const fetchProperties = async () => {
     setLoading(true);
     try {
       const data = await propertyService.getAll();
+
       setProperties(data);
     } catch (error) {
       toast.error("Failed to fetch properties");
+      console.log("err", error);
     } finally {
       setLoading(false);
     }

@@ -114,7 +114,6 @@ export const readAllDocuments = async (collectionName: string) => {
       id: doc.id,
       ...doc.data(),
     }));
-    console.log("Documents fetched: ", documents);
     return documents;
   } catch (error) {
     console.error("Error reading documents: ", error);

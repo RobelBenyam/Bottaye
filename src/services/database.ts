@@ -17,8 +17,17 @@ import {
   WhereFilterOp,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { Property, Unit, Tenant, Payment, Maintenance, Lease } from "../types";
+import {
+  Property,
+  Unit,
+  Tenant,
+  Payment,
+  Maintenance,
+  Lease,
+  User,
+} from "../types";
 import { readAllDocuments } from "@/lib/db";
+import { useAuthStore } from "@/stores/authStore";
 
 // Collection names
 const COLLECTIONS = {
@@ -74,15 +83,27 @@ export const propertyService = {
   },
 
   async getAll(): Promise<Property[]> {
+    // Replace hook call with direct store access
+    const user = useAuthStore.getState().user;
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.PROPERTIES))
     );
-    return querySnapshot.docs.map((doc) => ({
+
+    const allProperties = querySnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
       createdAt: toDate(doc.data().createdAt),
       updatedAt: toDate(doc.data().updatedAt),
     })) as Property[];
+    if (user?.role === "super_admin") {
+      return allProperties;
+    }
+    const filteredProperties = allProperties.filter(
+      (property: Property) =>
+        property.managerId === user?.id ||
+        user?.propertyIds?.includes(property.id)
+    );
+    return filteredProperties;
   },
 
   async getById(id: string): Promise<Property | null> {
@@ -121,7 +142,6 @@ export const propertyService = {
     // );
 
     const properties = await readAllDocuments(COLLECTIONS.PROPERTIES);
-    console.log("prop", properties);
     return properties;
   },
 };
@@ -256,7 +276,6 @@ export const tenantService = {
   async create(
     tenantData: Omit<Tenant, "id" | "createdAt" | "updatedAt">
   ): Promise<string> {
-    console.log("Creating tenant with data:", tenantData);
     const batch = writeBatch(db);
 
     // Create tenant
@@ -280,7 +299,6 @@ export const tenantService = {
 
     try {
       await batch.commit();
-      console.log("Tenant created with ID:", tenantRef.id);
       return tenantRef.id;
     } catch (error) {
       console.error("Error creating tenant:", error);
@@ -966,5 +984,60 @@ export const leaseService = {
       propertyIds
     );
     return leases;
+  },
+};
+
+// ...existing code...
+
+// User operations
+export const userService = {
+  async create(
+    userData: Omit<User, "id" | "createdAt" | "updatedAt">
+  ): Promise<string> {
+    const docRef = await addDoc(collection(db, COLLECTIONS.USERS), {
+      ...userData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    return docRef.id;
+  },
+
+  async getAll(): Promise<User[]> {
+    const querySnapshot = await getDocs(
+      query(collection(db, COLLECTIONS.USERS), orderBy("name"))
+    );
+    return querySnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: toDate(doc.data().createdAt),
+      updatedAt: toDate(doc.data().updatedAt),
+    })) as User[];
+  },
+
+  async getById(id: string): Promise<User | null> {
+    const docRef = doc(db, COLLECTIONS.USERS, id);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) return null;
+
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: toDate(docSnap.data().createdAt),
+      updatedAt: toDate(docSnap.data().updatedAt),
+    } as User;
+  },
+
+  async update(id: string, updates: Partial<User>): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: Timestamp.now(),
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, id);
+    await deleteDoc(docRef);
   },
 };

@@ -21,7 +21,11 @@ import {
   Camera,
 } from "lucide-react";
 import { formatCurrency } from "../utils/currency";
-import { unitService, propertyService } from "../services/database";
+import {
+  unitService,
+  propertyService,
+  tenantService,
+} from "../services/database";
 import {
   localUnitService,
   localPropertyService,
@@ -29,132 +33,44 @@ import {
 import { Unit, Property } from "../types";
 import AddUnitModal from "../components/modals/AddUnitModal";
 import EditUnitModal from "../components/modals/EditUnitModal";
+import ViewTenantModal from "@/components/modals/ViewTenantModal";
+import AddTenantModal from "../components/modals/AddTenantModal";
+import { useAvailableUnits } from "@/hooks/unitsHook";
+import { useUnits } from "@/hooks/unitsHook";
+import { useProperties } from "@/hooks/propertiesHook";
+import { useTenants } from "@/hooks/tenantsHook";
 
 export default function UnitsPage() {
+  const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
+  const { availableUnits } = useAvailableUnits();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
-  const [properties, setProperties] = useState<Property[]>([]);
+
+  const [viewTenantModalOpen, setViewTenantModalOpen] = useState(false);
+  const [viewingTenantId, setViewingTenantId] = useState<string | null>(null);
+  const [viewingTenant, setViewingTenant] = useState<any>(null);
+  const { createTenant } = useTenants();
 
   const propertyId = searchParams.get("propertyId");
   const propertyName = searchParams.get("propertyName");
 
-  // Load units and properties data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        let unitsData: Unit[] = [];
-        let propertiesData: Property[] = [];
-
-        try {
-          // Try Firebase first
-          if (propertyId) {
-            unitsData = await unitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await unitService.getAll();
-          }
-          propertiesData = await propertyService.getAll();
-          console.log("✅ Using Firebase data");
-        } catch (firebaseError) {
-          // Fallback to localStorage
-          console.log("🔄 Firebase failed, using localStorage");
-          console.log(firebaseError);
-        }
-
-        setUnits(unitsData);
-        setProperties(propertiesData);
-      } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [propertyId]);
-
-  const mockUnits = [
-    {
-      id: "1",
-      unitNumber: "2A",
-      propertyName: "Westlands Plaza",
-      type: "2_bedroom",
-      rent: 45000,
-      deposit: 90000,
-      status: "occupied",
-      tenantName: "John Doe",
-      tenantPhone: "+254712345678",
-      leaseEnd: "2024-12-31",
-    },
-    {
-      id: "2",
-      unitNumber: "Shop 5",
-      propertyName: "Westlands Plaza",
-      type: "shop",
-      rent: 80000,
-      deposit: 160000,
-      status: "vacant",
-      tenantName: null,
-      tenantPhone: null,
-      leaseEnd: null,
-    },
-    {
-      id: "3",
-      unitNumber: "1B",
-      propertyName: "Kilimani Heights",
-      type: "1_bedroom",
-      rent: 30000,
-      deposit: 60000,
-      status: "occupied",
-      tenantName: "Jane Smith",
-      tenantPhone: "+254723456789",
-      leaseEnd: "2025-03-15",
-    },
-    {
-      id: "4",
-      unitNumber: "3C",
-      propertyName: "Kilimani Heights",
-      type: "3_bedroom",
-      rent: 65000,
-      deposit: 130000,
-      status: "maintenance",
-      tenantName: null,
-      tenantPhone: null,
-      leaseEnd: null,
-    },
-    {
-      id: "5",
-      unitNumber: "A1",
-      propertyName: "Karen Residences",
-      type: "4_bedroom",
-      rent: 85000,
-      deposit: 170000,
-      status: "occupied",
-      tenantName: "Michael Johnson",
-      tenantPhone: "+254734567890",
-      leaseEnd: "2024-11-30",
-    },
-    {
-      id: "6",
-      unitNumber: "B2",
-      propertyName: "Karen Residences",
-      type: "2_bedroom",
-      rent: 55000,
-      deposit: 110000,
-      status: "vacant",
-      tenantName: null,
-      tenantPhone: null,
-      leaseEnd: null,
-    },
-  ];
+  const {
+    units,
+    properties,
+    tenants,
+    createUnit,
+    updateUnit,
+    deleteUnit,
+    refetch,
+    loading,
+  } = useUnits();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -204,33 +120,7 @@ export default function UnitsPage() {
 
   const handleUnitSubmit = async (data: any) => {
     try {
-      // Try Firebase first, fallback to localStorage
-      try {
-        await unitService.create(data);
-      } catch (firebaseError) {
-        await localUnitService.create(data);
-      }
-
-      // Refresh units list
-      const loadData = async () => {
-        let unitsData;
-        try {
-          if (propertyId) {
-            unitsData = await unitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await unitService.getAll();
-          }
-        } catch (firebaseError) {
-          if (propertyId) {
-            unitsData = await localUnitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await localUnitService.getAll();
-          }
-        }
-        setUnits(unitsData);
-      };
-      await loadData();
-
+      await createUnit(data);
       setIsAddModalOpen(false);
     } catch (error) {
       console.error("Error creating unit:", error);
@@ -250,35 +140,8 @@ export default function UnitsPage() {
 
   const handleUpdateUnit = async (data: any) => {
     if (!editingUnit) return;
-
     try {
-      // Try Firebase first, fallback to localStorage
-      try {
-        await unitService.update(editingUnit.id, data);
-      } catch (firebaseError) {
-        await localUnitService.update(editingUnit.id, data);
-      }
-
-      // Refresh units list
-      const loadData = async () => {
-        let unitsData;
-        try {
-          if (propertyId) {
-            unitsData = await unitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await unitService.getAll();
-          }
-        } catch (firebaseError) {
-          if (propertyId) {
-            unitsData = await localUnitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await localUnitService.getAll();
-          }
-        }
-        setUnits(unitsData);
-      };
-      await loadData();
-
+      await updateUnit(editingUnit.id, data);
       setIsEditModalOpen(false);
       setEditingUnit(null);
     } catch (error) {
@@ -363,172 +226,171 @@ export default function UnitsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-          {filteredUnits.map(
-            (unit) => (
-              console.log(unit),
-              (
-                <div
-                  key={unit.id}
-                  className="card-hover group relative overflow-hidden cursor-pointer"
-                  onClick={() => handleUnitClick(unit)}
+          {filteredUnits.map((unit) => (
+            <div
+              key={unit.id}
+              className="card-hover group relative overflow-hidden cursor-pointer"
+              onClick={() => handleUnitClick(unit)}
+            >
+              {/* Unit Image */}
+              <div className="relative h-40 mb-4 rounded-lg overflow-hidden bg-secondary-100 dark:bg-secondary-700">
+                {unit.images && unit.images.length > 0 ? (
+                  <img
+                    src={unit.images[0]}
+                    alt={`Unit ${unit.unitNumber}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <DoorOpen className="h-12 w-12 text-secondary-300 dark:text-secondary-600" />
+                  </div>
+                )}
+
+                {/* Image count indicator */}
+                {unit.images && unit.images.length > 1 && (
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
+                    <ImageIcon className="h-3 w-3 mr-1" />
+                    {unit.images.length}
+                  </div>
+                )}
+
+                {/* Floor plan indicator */}
+                {unit.floorPlan && (
+                  <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
+                    <FileText className="h-3 w-3 mr-1" />
+                    Plan
+                  </div>
+                )}
+
+                {/* Status badge */}
+                <div className="absolute bottom-2 right-2">
+                  <span className={getStatusBadge(unit.status)}>
+                    {unit.status}
+                  </span>
+                </div>
+
+                {/* Edit Button - Shows on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditUnit(unit);
+                  }}
+                  className="absolute bottom-2 left-2 p-2 bg-white dark:bg-secondary-800 rounded-lg shadow-md hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  title="Edit Unit"
                 >
-                  {/* Unit Image */}
-                  <div className="relative h-40 mb-4 rounded-lg overflow-hidden bg-secondary-100 dark:bg-secondary-700">
-                    {unit.images && unit.images.length > 0 ? (
-                      <img
-                        src={unit.images[0]}
-                        alt={`Unit ${unit.unitNumber}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <DoorOpen className="h-12 w-12 text-secondary-300 dark:text-secondary-600" />
-                      </div>
-                    )}
+                  <Edit className="h-4 w-4 text-secondary-600 dark:text-secondary-400" />
+                </button>
+              </div>
 
-                    {/* Image count indicator */}
-                    {unit.images && unit.images.length > 1 && (
-                      <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
-                        <ImageIcon className="h-3 w-3 mr-1" />
-                        {unit.images.length}
-                      </div>
-                    )}
-
-                    {/* Floor plan indicator */}
-                    {unit.floorPlan && (
-                      <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
-                        <FileText className="h-3 w-3 mr-1" />
-                        Plan
-                      </div>
-                    )}
-
-                    {/* Status badge */}
-                    <div className="absolute bottom-2 right-2">
-                      <span className={getStatusBadge(unit.status)}>
-                        {unit.status}
-                      </span>
-                    </div>
-
-                    {/* Edit Button - Shows on hover */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditUnit(unit);
-                      }}
-                      className="absolute bottom-2 left-2 p-2 bg-white dark:bg-secondary-800 rounded-lg shadow-md hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                      title="Edit Unit"
-                    >
-                      <Edit className="h-4 w-4 text-secondary-600 dark:text-secondary-400" />
-                    </button>
+              <div className="px-1">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                      Unit {unit.unitNumber}
+                    </h3>
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                      {unit.propertyName}
+                    </p>
                   </div>
-
-                  <div className="px-1">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                          Unit {unit.unitNumber}
-                        </h3>
-                        <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                          {unit.propertyName}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(unit.status)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                        Type
-                      </span>
-                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                        {getUnitTypeLabel(unit.type)}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                        Rent
-                      </span>
-                      <span className="font-semibold text-secondary-900 dark:text-secondary-100">
-                        {formatCurrency(unit.rent)}/month
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                        Deposit
-                      </span>
-                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                        {formatCurrency(unit.deposit)}
-                      </span>
-                    </div>
-
-                    {unit.status === "occupied" && unit.tenantName && (
-                      <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <User className="h-4 w-4 text-secondary-400" />
-                          <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                            {unit.tenantName}
-                          </span>
-                        </div>
-                        <div className="text-sm text-secondary-600 dark:text-secondary-400">
-                          <p>Tenant ID: {unit.tenantId}</p>
-                          <p>Status: Occupied</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {unit.status === "vacant" && (
-                      <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                        <p className="text-sm text-secondary-500 dark:text-secondary-400 italic">
-                          Available for rent
-                        </p>
-                      </div>
-                    )}
-
-                    {unit.status === "maintenance" && (
-                      <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                        <p className="text-sm text-warning-600 italic">
-                          Under maintenance
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Quick Tenant Action */}
-                    <div className="pt-4 border-t border-secondary-200 dark:border-secondary-600 mt-4">
-                      <div className="flex justify-center">
-                        {/* && unit.tenantId */}
-                        {unit.status === "occupied" ? (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/tenants`);
-                            }}
-                            className="btn-secondary text-sm py-2 px-4"
-                          >
-                            View Tenant
-                          </button>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/tenants`);
-                            }}
-                            className="btn-primary text-sm py-2 px-4"
-                          >
-                            Add Tenant
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(unit.status)}
                   </div>
                 </div>
-              )
-            )
-          )}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                    Type
+                  </span>
+                  <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                    {getUnitTypeLabel(unit.type)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                    Rent
+                  </span>
+                  <span className="font-semibold text-secondary-900 dark:text-secondary-100">
+                    {formatCurrency(unit.rent)}/month
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                    Deposit
+                  </span>
+                  <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                    {formatCurrency(unit.deposit)}
+                  </span>
+                </div>
+
+                {unit.status === "occupied" && unit.tenantName && (
+                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <User className="h-4 w-4 text-secondary-400" />
+                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                        {unit.tenantName}
+                      </span>
+                    </div>
+                    <div className="text-sm text-secondary-600 dark:text-secondary-400">
+                      <p>Tenant ID: {unit.tenantId}</p>
+                      <p>Status: Occupied</p>
+                    </div>
+                  </div>
+                )}
+
+                {unit.status === "vacant" && (
+                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 italic">
+                      Available for rent
+                    </p>
+                  </div>
+                )}
+
+                {unit.status === "maintenance" && (
+                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                    <p className="text-sm text-warning-600 italic">
+                      Under maintenance
+                    </p>
+                  </div>
+                )}
+
+                {/* Quick Tenant Action */}
+                <div className="pt-4 border-t border-secondary-200 dark:border-secondary-600 mt-4">
+                  <div className="flex justify-center">
+                    {/* && unit.tenantId */}
+                    {unit.status === "occupied" ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewTenantModalOpen(true);
+                          const tenant =
+                            tenants.find((t) => t.id === unit.tenantId) || null;
+                          setViewingTenant(tenant);
+                        }}
+                        className="btn-secondary text-sm py-2 px-4"
+                      >
+                        View Tenant
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUnit(unit);
+                          setIsAddTenantModalOpen(true);
+                        }}
+                        className="btn-primary text-sm py-2 px-4"
+                      >
+                        Add Tenant
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
 
           {filteredUnits.length === 0 && (
             <div className="text-center py-12">
@@ -553,6 +415,38 @@ export default function UnitsPage() {
         onSubmit={handleUnitSubmit}
         properties={properties.map((p) => ({ id: p.id, name: p.name }))}
       />
+      {viewTenantModalOpen && viewingTenant ? (
+        <ViewTenantModal
+          isOpen={viewTenantModalOpen}
+          onClose={() => {
+            setViewTenantModalOpen(false);
+            setViewingTenant(null);
+          }}
+          tenant={viewingTenant}
+        />
+      ) : null}
+
+      {/* Add Tenant Modal */}
+      {isAddTenantModalOpen && (
+        <AddTenantModal
+          isOpen={isAddTenantModalOpen}
+          onClose={() => setIsAddTenantModalOpen(false)}
+          availableUnits={availableUnits}
+          onSubmit={async (tenantData) => {
+            await createTenant({
+              ...tenantData,
+              leaseStartDate: new Date(tenantData.leaseStartDate),
+              leaseEndDate: new Date(tenantData.leaseEndDate),
+              emergencyContact: {
+                name: tenantData.emergencyContactName,
+                phone: tenantData.emergencyContactPhone,
+                relationship: tenantData.emergencyContactRelationship,
+              },
+            });
+            setIsAddTenantModalOpen(false);
+          }}
+        />
+      )}
 
       {/* Edit Unit Modal */}
       {editingUnit && (
@@ -680,7 +574,13 @@ export default function UnitsPage() {
                         <button
                           onClick={() => {
                             setIsQuickActionsOpen(false);
-                            navigate(`/tenants`);
+                            setViewTenantModalOpen(true);
+                            console.log("cli");
+                            const tenant =
+                              tenants.find(
+                                (t) => t.id === selectedUnit.tenantId
+                              ) || null;
+                            setViewingTenant(tenant);
                           }}
                           className="btn-secondary flex items-center justify-center"
                         >

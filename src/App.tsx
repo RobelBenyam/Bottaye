@@ -103,6 +103,7 @@ function App() {
                 {user.role === "super_admin" && (
                   <Route path="/users" element={<UsersPage />} />
                 )}
+
                 <Route
                   path="*"
                   element={<Navigate to="/dashboard" replace />}

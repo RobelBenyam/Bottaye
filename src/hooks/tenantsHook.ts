@@ -18,12 +18,28 @@ export function useTenants() {
   const { execute, loading: operationLoading } = useAsyncOperation<
     string | void
   >();
+  const { user } = useAuthStore();
 
   const fetchTenants = async () => {
     setLoading(true);
     try {
-      const data = await tenantService.getAll();
-      setTenants(data);
+      const data = (await tenantService.getAll()) as Tenant[];
+      const propertiesData = await propertyService.getAll();
+      const unitsData = await unitService.getAll();
+
+      // Filter tenants to only those belonging to the filtered properties
+      const filteredPropertyIds = propertiesData.map((property) => property.id);
+      //filter tenants to only those belonging to the filtered units
+
+      const filteredUnitIds = unitsData
+        .filter((unit) => filteredPropertyIds.includes(unit.propertyId))
+        .map((unit) => unit.id);
+
+      const filteredTenants = data.filter(
+        (tenant) => tenant.unitId && filteredUnitIds.includes(tenant.unitId)
+      );
+
+      setTenants(filteredTenants);
     } catch (error) {
       try {
         const { localTenantService } = await import("../services/localStorage");
