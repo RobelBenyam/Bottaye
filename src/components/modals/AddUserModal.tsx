@@ -1,0 +1,175 @@
+import { useState } from 'react'
+import { X, UserPlus, Mail, User as UserIcon, Shield } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { doc, setDoc, Timestamp } from 'firebase/firestore'
+import { auth, db } from '../../lib/firebase'
+import toast from 'react-hot-toast'
+
+const userSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  role: z.enum(['super_admin', 'admin'])
+})
+
+type UserForm = z.infer<typeof userSchema>
+
+interface AddUserModalProps {
+  onClose: () => void
+  onSuccess: () => void
+}
+
+export default function AddUserModal({ onClose, onSuccess }: AddUserModalProps) {
+  const [loading, setLoading] = useState(false)
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm<UserForm>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      role: 'admin'
+    }
+  })
+
+  const onSubmit = async (data: UserForm) => {
+    try {
+      setLoading(true)
+      
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password)
+      
+      // Create user document in Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: data.email,
+        name: data.name,
+        role: data.role,
+        propertyIds: [],
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      })
+
+      toast.success('User created successfully')
+      onSuccess()
+    } catch (error: any) {
+      console.error('Error creating user:', error)
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error('Email is already in use')
+      } else {
+        toast.error('Failed to create user')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+              <UserPlus className="w-5 h-5 text-primary-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-secondary-900">Add New User</h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-secondary-400 hover:text-secondary-600"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <UserIcon className="w-4 h-4 inline mr-1" />
+              Full Name
+            </label>
+            <input
+              {...register('name')}
+              type="text"
+              className="input-field"
+              placeholder="Enter full name"
+            />
+            {errors.name && (
+              <p className="mt-1 text-sm text-error-600">{errors.name.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <Mail className="w-4 h-4 inline mr-1" />
+              Email Address
+            </label>
+            <input
+              {...register('email')}
+              type="email"
+              className="input-field"
+              placeholder="user@example.com"
+            />
+            {errors.email && (
+              <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              Password
+            </label>
+            <input
+              {...register('password')}
+              type="password"
+              className="input-field"
+              placeholder="Minimum 8 characters"
+            />
+            {errors.password && (
+              <p className="mt-1 text-sm text-error-600">{errors.password.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <Shield className="w-4 h-4 inline mr-1" />
+              Role
+            </label>
+            <select {...register('role')} className="input-field">
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+            {errors.role && (
+              <p className="mt-1 text-sm text-error-600">{errors.role.message}</p>
+            )}
+            <p className="mt-1 text-xs text-secondary-500">
+              Admins can only manage assigned properties. Super Admins have full access.
+            </p>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary flex-1"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary flex-1"
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Create User'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+

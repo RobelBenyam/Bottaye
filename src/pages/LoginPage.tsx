@@ -105,7 +105,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="space-y-3">
+            <div>
               <button
                 type="submit"
                 disabled={loading}
@@ -119,28 +119,6 @@ export default function LoginPage() {
                 ) : (
                   'Sign in'
                 )}
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  // Demo login - bypass Firebase
-                  const demoUser = {
-                    id: 'demo-user',
-                    email: 'demo@bottaye.com',
-                    name: 'Demo Admin',
-                    role: 'admin' as const,
-                    propertyIds: ['1', '2'],
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                  }
-                  // Save to localStorage for persistence
-                  localStorage.setItem('bottaye_user', JSON.stringify(demoUser))
-                  useAuthStore.setState({ user: demoUser, loading: false })
-                }}
-                className="btn-secondary w-full flex justify-center items-center"
-              >
-                Demo Login (Explore App)
               </button>
             </div>
           </form>

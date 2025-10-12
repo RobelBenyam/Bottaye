@@ -8,9 +8,11 @@ import { tenantService } from '../services/database'
 import { localUnitService as localUnits, localPropertyService as localProps } from '../services/localStorage'
 import { unitService } from '../services/database'
 import { localUnitService } from '../services/localStorage'
+import { useAuthStore } from '../stores/authStore'
 
 export default function TenantsPage() {
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState<any>(null)
@@ -24,7 +26,7 @@ export default function TenantsPage() {
       try {
         let units;
         try {
-          units = await unitService.getAll();
+          units = await unitService.getAll(user);
         } catch (firebaseError) {
           units = await localUnitService.getAll();
         }

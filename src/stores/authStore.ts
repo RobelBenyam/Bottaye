@@ -93,14 +93,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   initializeAuth: () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      // Check if we already have a demo user - don't override it
-      const currentState = useAuthStore.getState();
-      if (currentState.user && currentState.user.id === 'demo-user') {
-        console.log('🎯 Demo user detected, skipping Firebase auth');
-        set({ loading: false });
-        return;
-      }
-
       if (firebaseUser) {
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
@@ -116,23 +108,20 @@ export const useAuthStore = create<AuthState>((set) => ({
               createdAt: userData.createdAt?.toDate() || new Date(),
               updatedAt: userData.updatedAt?.toDate() || new Date(),
             }
-            saveUserToStorage(user); // Save to localStorage
+            saveUserToStorage(user);
             set({ user, loading: false })
           } else {
+            saveUserToStorage(null);
             set({ user: null, loading: false })
           }
         } catch (error) {
-          console.log('🔄 Firebase auth error, keeping current state');
-          set({ loading: false })
+          console.error('Firebase auth error:', error);
+          saveUserToStorage(null);
+          set({ user: null, loading: false })
         }
       } else {
-        // Only clear user if we don't have a demo user
-        if (!currentState.user || currentState.user.id !== 'demo-user') {
-          saveUserToStorage(null); // Clear from localStorage
-          set({ user: null, loading: false })
-        } else {
-          set({ loading: false })
-        }
+        saveUserToStorage(null);
+        set({ user: null, loading: false })
       }
     })
 

@@ -7,10 +7,12 @@ import { localUnitService, localPropertyService } from '../services/localStorage
 import { Unit, Property } from '../types'
 import AddUnitModal from '../components/modals/AddUnitModal'
 import EditUnitModal from '../components/modals/EditUnitModal'
+import { useAuthStore } from '../stores/authStore'
 
 export default function UnitsPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [units, setUnits] = useState<Unit[]>([])
@@ -33,13 +35,13 @@ export default function UnitsPage() {
         let propertiesData;
         
         try {
-          // Try Firebase first
+          // Try Firebase first - pass user for filtering
           if (propertyId) {
             unitsData = await unitService.getByPropertyId(propertyId);
           } else {
-            unitsData = await unitService.getAll();
+            unitsData = await unitService.getAll(user);
           }
-          propertiesData = await propertyService.getAll();
+          propertiesData = await propertyService.getAll(user);
           console.log('✅ Using Firebase data');
         } catch (firebaseError) {
           // Fallback to localStorage
@@ -62,7 +64,7 @@ export default function UnitsPage() {
     };
     
     loadData();
-  }, [propertyId]);
+  }, [propertyId, user]);
 
   const mockUnits = [
     {

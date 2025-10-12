@@ -7,6 +7,7 @@ import InitializeDatabase from '../components/InitializeDatabase'
 import { propertyService, unitService } from '../services/database'
 import { localPropertyService, localUnitService } from '../services/localStorage'
 import { Property } from '../types'
+import { useAuthStore } from '../stores/authStore'
 
 interface PropertyWithStats extends Property {
   occupiedUnits: number;
@@ -15,6 +16,7 @@ interface PropertyWithStats extends Property {
 
 export default function PropertiesPage() {
   const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -29,8 +31,8 @@ export default function PropertiesPage() {
       let getUnits;
       
       try {
-        // Try Firebase first
-        propertiesData = await propertyService.getAll();
+        // Try Firebase first - pass user for filtering
+        propertiesData = await propertyService.getAll(user);
         getUnits = unitService.getByPropertyId;
         console.log('✅ Using Firebase data');
       } catch (firebaseError) {

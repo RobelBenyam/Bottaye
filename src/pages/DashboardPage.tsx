@@ -13,26 +13,40 @@ import {
 import { formatCurrency, formatNumber } from '../utils/currency'
 import { DashboardStats } from '../types'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { useAuthStore } from '../stores/authStore'
+import { dbUtils } from '../services/database'
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const user = useAuthStore((state) => state.user)
+  const [stats, setStats] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Load data immediately without artificial delay
-    setStats({
-      totalProperties: 12,
-      totalUnits: 156,
-      occupiedUnits: 142,
-      vacantUnits: 14,
-      totalTenants: 142,
-      totalRevenue: 4250000,
-      pendingPayments: 15,
-      overduePayments: 3,
-      maintenanceRequests: 8
-    })
-    setLoading(false)
-  }, [])
+    loadStats()
+  }, [user])
+
+  const loadStats = async () => {
+    try {
+      setLoading(true)
+      const data = await dbUtils.getDashboardStats(user)
+      setStats(data)
+    } catch (error) {
+      console.error('Error loading stats:', error)
+      // Fallback to demo data
+      setStats({
+        totalProperties: 0,
+        totalUnits: 0,
+        occupiedUnits: 0,
+        totalTenants: 0,
+        totalRevenue: 0,
+        collectedThisMonth: 0,
+        occupancyRate: 0,
+        collectionRate: 0
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -42,7 +56,9 @@ export default function DashboardPage() {
     )
   }
 
-  const occupancyRate = stats ? (stats.occupiedUnits / stats.totalUnits) * 100 : 0
+  const occupancyRate = stats?.occupancyRate || 0
+  const collectionRate = stats?.collectionRate || 0
+  const vacantUnits = stats ? stats.totalUnits - stats.occupiedUnits : 0
 
   const statCards = [
     {
@@ -70,37 +86,37 @@ export default function DashboardPage() {
       changeType: 'increase'
     },
     {
-      title: 'Monthly Revenue',
-      value: formatCurrency(stats?.totalRevenue || 0),
+      title: 'Collected This Month',
+      value: formatCurrency(stats?.collectedThisMonth || 0),
       icon: DollarSign,
       color: 'primary',
-      change: '+12.5%',
+      change: `${collectionRate}%`,
       changeType: 'increase'
     }
   ]
 
   const alertCards = [
     {
-      title: 'Pending Payments',
-      value: stats?.pendingPayments || 0,
+      title: 'Total Revenue',
+      value: formatCurrency(stats?.totalRevenue || 0),
       icon: CreditCard,
-      color: 'warning'
+      color: 'success'
     },
     {
-      title: 'Overdue Payments',
-      value: stats?.overduePayments || 0,
-      icon: AlertTriangle,
-      color: 'error'
+      title: 'Total Properties',
+      value: stats?.totalProperties || 0,
+      icon: Building2,
+      color: 'primary'
     },
     {
-      title: 'Maintenance Requests',
-      value: stats?.maintenanceRequests || 0,
-      icon: AlertTriangle,
+      title: 'Total Tenants',
+      value: stats?.totalTenants || 0,
+      icon: Users,
       color: 'warning'
     },
     {
       title: 'Vacant Units',
-      value: stats?.vacantUnits || 0,
+      value: vacantUnits,
       icon: Home,
       color: 'secondary'
     }
@@ -200,7 +216,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-sm text-secondary-600 dark:text-secondary-400">Collection Rate</span>
-                <span className="font-semibold text-primary-600 dark:text-primary-400">94.2%</span>
+                <span className="font-semibold text-primary-600 dark:text-primary-400">{collectionRate}%</span>
               </div>
             </div>
           </div>

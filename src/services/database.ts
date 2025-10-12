@@ -13,7 +13,7 @@ import {
   writeBatch 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Property, Unit, Tenant, Payment, Maintenance } from '../types';
+import { Property, Unit, Tenant, Payment, Maintenance, User } from '../types';
 
 // Collection names
 const COLLECTIONS = {
@@ -24,6 +24,28 @@ const COLLECTIONS = {
   MAINTENANCE: 'maintenance',
   USERS: 'users'
 } as const;
+
+// Helper to filter data based on user role
+function filterByUserAccess<T extends { propertyId?: string; id?: string }>(
+  items: T[],
+  user: User | null
+): T[] {
+  if (!user) return [];
+  
+  // Super admin sees everything
+  if (user.role === 'super_admin') return items;
+  
+  // Regular admin only sees items from their assigned properties
+  const userPropertyIds = user.propertyIds || [];
+  
+  // For properties list, filter by property id directly
+  if (items.length > 0 && 'id' in items[0] && !('propertyId' in items[0])) {
+    return items.filter(item => userPropertyIds.includes(item.id!));
+  }
+  
+  // For other entities, filter by propertyId
+  return items.filter(item => item.propertyId && userPropertyIds.includes(item.propertyId));
+}
 
 // Property operations
 export const propertyService = {
@@ -36,16 +58,18 @@ export const propertyService = {
     return docRef.id;
   },
 
-  async getAll(): Promise<Property[]> {
+  async getAll(user: User | null = null): Promise<Property[]> {
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.PROPERTIES), orderBy('name'))
     );
-    return querySnapshot.docs.map(doc => ({
+    const properties = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate()
     })) as Property[];
+    
+    return filterByUserAccess(properties, user);
   },
 
   async getById(id: string): Promise<Property | null> {
@@ -104,16 +128,18 @@ export const unitService = {
     return null;
   },
 
-  async getAll(): Promise<Unit[]> {
+  async getAll(user: User | null = null): Promise<Unit[]> {
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.UNITS), orderBy('propertyName'), orderBy('unitNumber'))
     );
-    return querySnapshot.docs.map(doc => ({
+    const units = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate()
     })) as Unit[];
+    
+    return filterByUserAccess(units, user);
   },
 
   async getByPropertyId(propertyId: string): Promise<Unit[]> {
@@ -132,7 +158,7 @@ export const unitService = {
     })) as Unit[];
   },
 
-  async getAvailableUnits(): Promise<Unit[]> {
+  async getAvailableUnits(user: User | null = null): Promise<Unit[]> {
     const querySnapshot = await getDocs(
       query(
         collection(db, COLLECTIONS.UNITS),
@@ -141,12 +167,14 @@ export const unitService = {
         orderBy('unitNumber')
       )
     );
-    return querySnapshot.docs.map(doc => ({
+    const units = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate()
     })) as Unit[];
+    
+    return filterByUserAccess(units, user);
   },
 
   async update(id: string, updates: Partial<Unit>): Promise<void> {
@@ -190,11 +218,11 @@ export const tenantService = {
     return tenantRef.id;
   },
 
-  async getAll(): Promise<Tenant[]> {
+  async getAll(user: User | null = null): Promise<Tenant[]> {
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.TENANTS), orderBy('name'))
     );
-    return querySnapshot.docs.map(doc => ({
+    const tenants = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
@@ -202,6 +230,8 @@ export const tenantService = {
       leaseStartDate: doc.data().leaseStartDate?.toDate(),
       leaseEndDate: doc.data().leaseEndDate?.toDate()
     })) as Tenant[];
+    
+    return filterByUserAccess(tenants, user);
   },
 
   async getByUnitId(unitId: string): Promise<Tenant | null> {
@@ -249,11 +279,11 @@ export const paymentService = {
     return docRef.id;
   },
 
-  async getAll(): Promise<Payment[]> {
+  async getAll(user: User | null = null): Promise<Payment[]> {
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.PAYMENTS), orderBy('dueDate', 'desc'))
     );
-    return querySnapshot.docs.map(doc => ({
+    const payments = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       dueDate: doc.data().dueDate?.toDate(),
@@ -261,6 +291,8 @@ export const paymentService = {
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate()
     })) as Payment[];
+    
+    return filterByUserAccess(payments, user);
   },
 
   async getByTenantId(tenantId: string): Promise<Payment[]> {
@@ -334,17 +366,19 @@ export const maintenanceService = {
     return docRef.id;
   },
 
-  async getAll(): Promise<Maintenance[]> {
+  async getAll(user: User | null = null): Promise<Maintenance[]> {
     const querySnapshot = await getDocs(
       query(collection(db, COLLECTIONS.MAINTENANCE), orderBy('createdAt', 'desc'))
     );
-    return querySnapshot.docs.map(doc => ({
+    const maintenance = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate(),
       updatedAt: doc.data().updatedAt?.toDate(),
       completedAt: doc.data().completedAt?.toDate()
     })) as Maintenance[];
+    
+    return filterByUserAccess(maintenance, user);
   },
 
   async getByPropertyId(propertyId: string): Promise<Maintenance[]> {
@@ -418,12 +452,12 @@ export const dbUtils = {
   },
 
   // Get dashboard statistics
-  async getDashboardStats() {
+  async getDashboardStats(user: User | null = null) {
     const [properties, units, tenants, payments] = await Promise.all([
-      propertyService.getAll(),
-      unitService.getAll(),
-      tenantService.getAll(),
-      paymentService.getAll()
+      propertyService.getAll(user),
+      unitService.getAll(user),
+      tenantService.getAll(user),
+      paymentService.getAll(user)
     ]);
 
     const occupiedUnits = units.filter(unit => unit.status === 'occupied').length;
@@ -445,5 +479,64 @@ export const dbUtils = {
       occupancyRate: units.length > 0 ? Math.round((occupiedUnits / units.length) * 100) : 0,
       collectionRate: totalRevenue > 0 ? Math.round((collectedThisMonth / totalRevenue) * 100) : 0
     };
+  }
+};
+
+// User management operations (Super admin only)
+export const userService = {
+  async create(userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    const docRef = await addDoc(collection(db, COLLECTIONS.USERS), {
+      ...userData,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return docRef.id;
+  },
+
+  async getAll(): Promise<User[]> {
+    const querySnapshot = await getDocs(
+      query(collection(db, COLLECTIONS.USERS), orderBy('name'))
+    );
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate()
+    })) as User[];
+  },
+
+  async getById(id: string): Promise<User | null> {
+    const docRef = doc(db, COLLECTIONS.USERS, id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) return null;
+    
+    return {
+      id: docSnap.id,
+      ...docSnap.data(),
+      createdAt: docSnap.data().createdAt?.toDate(),
+      updatedAt: docSnap.data().updatedAt?.toDate()
+    } as User;
+  },
+
+  async update(id: string, updates: Partial<User>): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, id);
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: Timestamp.now()
+    });
+  },
+
+  async delete(id: string): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, id);
+    await deleteDoc(docRef);
+  },
+
+  async assignProperties(userId: string, propertyIds: string[]): Promise<void> {
+    const docRef = doc(db, COLLECTIONS.USERS, userId);
+    await updateDoc(docRef, {
+      propertyIds,
+      updatedAt: Timestamp.now()
+    });
   }
 }; 
