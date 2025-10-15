@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { X, Building2, Upload, Camera, Image, Trash2 } from 'lucide-react';
-import { Property } from '../../types';
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { X, Building2, Upload, Trash2 } from "lucide-react";
+import { Property } from "../../types";
 
 const propertySchema = z.object({
-  name: z.string().min(1, 'Property name is required'),
-  address: z.string().min(1, 'Address is required'),
-  type: z.enum(['residential', 'commercial', 'mixed'], {
-    required_error: 'Property type is required',
+  name: z.string().min(1, "Property name is required"),
+  address: z.string().min(1, "Address is required"),
+  type: z.enum(["residential", "commercial", "mixed"], {
+    required_error: "Property type is required",
   }),
   description: z.string().optional(),
   images: z.array(z.string()).optional(),
@@ -24,9 +24,16 @@ interface EditPropertyModalProps {
   onUpdate: (data: PropertyFormData) => Promise<void>;
 }
 
-export default function EditPropertyModal({ isOpen, onClose, property, onUpdate }: EditPropertyModalProps) {
+export default function EditPropertyModal({
+  isOpen,
+  onClose,
+  property,
+  onUpdate,
+}: EditPropertyModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedImages, setSelectedImages] = useState<string[]>(property.images || []);
+  const [selectedImages, setSelectedImages] = useState<string[]>(
+    property.images || []
+  );
   const [isDragging, setIsDragging] = useState(false);
 
   const {
@@ -40,8 +47,8 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
       name: property.name,
       address: property.address,
       type: property.type,
-      description: property.description || '',
-    }
+      description: property.description || "",
+    },
   });
 
   useEffect(() => {
@@ -51,20 +58,20 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
         name: property.name,
         address: property.address,
         type: property.type,
-        description: property.description || '',
+        description: property.description || "",
       });
     }
   }, [isOpen, property, reset]);
 
   const handleImageUpload = (files: FileList | null) => {
     if (!files) return;
-    
-    Array.from(files).forEach(file => {
-      if (file.type.startsWith('image/')) {
+
+    Array.from(files).forEach((file) => {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = (e) => {
           const result = e.target?.result as string;
-          setSelectedImages(prev => [...prev, result]);
+          setSelectedImages((prev) => [...prev, result]);
         };
         reader.readAsDataURL(file);
       }
@@ -72,7 +79,7 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
   };
 
   const removeImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -100,7 +107,7 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
       });
       onClose();
     } catch (error) {
-      console.error('Error updating property:', error);
+      console.error("Error updating property:", error);
     } finally {
       setIsLoading(false);
     }
@@ -119,8 +126,11 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-secondary-900 bg-opacity-50" onClick={handleClose} />
-        
+        <div
+          className="fixed inset-0 transition-opacity bg-secondary-900 bg-opacity-50"
+          onClick={handleClose}
+        />
+
         <div className="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-secondary-800 shadow-xl rounded-xl">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -128,8 +138,12 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
                 <Building2 className="h-6 w-6 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">Edit Property</h3>
-                <p className="text-sm text-secondary-600 dark:text-secondary-400">Update property information and photos</p>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                  Edit Property
+                </h3>
+                <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                  Update property information and photos
+                </p>
               </div>
             </div>
             <button
@@ -147,13 +161,15 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
                   Property Name *
                 </label>
                 <input
-                  {...register('name')}
+                  {...register("name")}
                   type="text"
                   placeholder="e.g., Kilimani Heights"
                   className="input-field"
                 />
                 {errors.name && (
-                  <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.name.message}
+                  </p>
                 )}
               </div>
 
@@ -161,13 +177,15 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
                 <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
                   Property Type *
                 </label>
-                <select {...register('type')} className="input-field">
+                <select {...register("type")} className="input-field">
                   <option value="residential">Residential</option>
                   <option value="commercial">Commercial</option>
                   <option value="mixed">Mixed Use</option>
                 </select>
                 {errors.type && (
-                  <p className="mt-1 text-sm text-red-600">{errors.type.message}</p>
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.type.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -177,13 +195,15 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
                 Address *
               </label>
               <input
-                {...register('address')}
+                {...register("address")}
                 type="text"
                 placeholder="e.g., Kilimani Road, Nairobi"
                 className="input-field"
               />
               {errors.address && (
-                <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+                <p className="mt-1 text-sm text-red-600">
+                  {errors.address.message}
+                </p>
               )}
             </div>
 
@@ -192,7 +212,7 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
                 Description
               </label>
               <textarea
-                {...register('description')}
+                {...register("description")}
                 rows={3}
                 placeholder="Optional description of the property..."
                 className="input-field resize-none"
@@ -204,7 +224,7 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
               <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
                 Property Images
               </label>
-              
+
               {/* Current Images */}
               {selectedImages.length > 0 && (
                 <div className="mb-4 grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -232,8 +252,8 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                   isDragging
-                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                    : 'border-secondary-300 dark:border-secondary-600 hover:border-primary-400'
+                    ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                    : "border-secondary-300 dark:border-secondary-600 hover:border-primary-400"
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -247,10 +267,16 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
                   className="hidden"
                   id="property-images-edit"
                 />
-                <label htmlFor="property-images-edit" className="cursor-pointer">
+                <label
+                  htmlFor="property-images-edit"
+                  className="cursor-pointer"
+                >
                   <Upload className="h-8 w-8 text-secondary-400 mx-auto mb-2" />
                   <p className="text-sm text-secondary-600 dark:text-secondary-400">
-                    <span className="text-primary-600 font-medium">Click to upload</span> or drag and drop
+                    <span className="text-primary-600 font-medium">
+                      Click to upload
+                    </span>{" "}
+                    or drag and drop
                   </p>
                   <p className="text-xs text-secondary-500 dark:text-secondary-500 mt-1">
                     PNG, JPG, GIF up to 10MB each
@@ -275,14 +301,30 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
               >
                 {isLoading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Updating...
                   </>
                 ) : (
-                  'Update Property'
+                  "Update Property"
                 )}
               </button>
             </div>
@@ -291,4 +333,4 @@ export default function EditPropertyModal({ isOpen, onClose, property, onUpdate 
       </div>
     </div>
   );
-} 
+}

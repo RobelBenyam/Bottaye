@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import Logo from "../components/Logo";
 import { useAuthStore } from "../stores/authStore";
 import LoadingSpinner from "../components/LoadingSpinner";

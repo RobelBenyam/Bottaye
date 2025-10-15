@@ -6,7 +6,6 @@ import {
   MapPin,
   Building2,
   Edit3,
-  Camera,
   Image as ImageIcon,
 } from "lucide-react";
 import AddPropertyModal from "../components/modals/AddPropertyModal";
@@ -83,7 +82,7 @@ export default function PropertiesPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateProperty = async (data: any) => {
+  const handleUpdateProperty = async () => {
     if (!editingProperty) return;
     try {
       // Use the hook's updateProperty method if available
@@ -289,7 +288,7 @@ export default function PropertiesPage() {
       <AddPropertyModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onSubmit={(data) => {
+        onSubmit={() => {
           // You can implement property addition logic here, e.g. reload properties after adding
           loadProperties();
           setIsAddModalOpen(false);

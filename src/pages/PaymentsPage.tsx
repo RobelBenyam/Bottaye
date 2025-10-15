@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import AddPaymentModal from "../components/AddPaymentModal";
 import {
   Plus,
@@ -12,7 +12,6 @@ import {
   Eye,
   X,
   Calendar,
-  User,
   MapPin,
   DollarSign,
 } from "lucide-react";
@@ -26,8 +25,6 @@ export default function PaymentsPage() {
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isPaymentDetailsOpen, setIsPaymentDetailsOpen] = useState(false);
-
-  const [loadingPayments, setLoadingPayments] = useState(true);
 
   const { payments } = usePayments();
 

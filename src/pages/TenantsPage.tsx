@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -9,7 +9,6 @@ import {
   Calendar,
   User,
   Edit,
-  Eye,
   X,
   CreditCard,
   FileText,
@@ -18,13 +17,9 @@ import { formatCurrency } from "../utils/currency";
 import AddTenantModal from "../components/modals/AddTenantModal";
 import EditTenantModal from "../components/modals/EditTenantModal";
 import { tenantService } from "../services/database";
-import {
-  localUnitService as localUnits,
-  localPropertyService as localProps,
-} from "../services/localStorage";
+
 import { unitService } from "../services/database";
 import { localUnitService } from "../services/localStorage";
-import { Tenant } from "@/types";
 import { useTenants } from "@/hooks/tenantsHook";
 
 export default function TenantsPage() {
@@ -35,7 +30,7 @@ export default function TenantsPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [availableUnits, setAvailableUnits] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadAvailableUnits = async () => {

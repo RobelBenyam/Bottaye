@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import {
   propertyService,
-  unitService,
-  tenantService,
-  paymentService,
-  maintenanceService,
-  dbUtils,
+  // unitService,
+  // tenantService,
+  // paymentService,
+  // maintenanceService,
+  // dbUtils,
 } from "../services/database";
-import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
-import { useAuthStore } from "@/stores/authStore";
+import { Property } from "../types";
 
 // Properties hook
 export function useProperties() {
@@ -18,7 +17,6 @@ export function useProperties() {
   const { execute, loading: operationLoading } = useAsyncOperation<
     string | void
   >();
-  const { user } = useAuthStore();
 
   const fetchProperties = async () => {
     setLoading(true);
@@ -77,6 +75,6 @@ export function useProperties() {
     refetch: fetchProperties,
   };
 }
-function useAsyncOperation<T>(): { execute: any; loading: any } {
+function useAsyncOperation<_T>(): { execute: any; loading: any } {
   return { execute: null, loading: null };
 }

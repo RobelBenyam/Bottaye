@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-// React hook to fetch all payments from Firestore
-
 import {
   collection,
   doc,
@@ -145,14 +142,7 @@ export const propertyService = {
     await deleteDoc(docRef);
   },
 
-  getByUserId: async (userId: string) => {
-    // const properties = await dbUtils.getCollectionWhere<Property>(
-    //   COLLECTIONS.PROPERTIES,
-    //   "managerId",
-    //   "==",
-    //   userId
-    // );
-
+  getByUserId: async (_userId: string) => {
     const properties = await readAllDocuments(COLLECTIONS.PROPERTIES);
     return properties;
   },

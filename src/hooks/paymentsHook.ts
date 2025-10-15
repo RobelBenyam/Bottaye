@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import {
-  propertyService,
-  unitService,
-  tenantService,
+  // propertyService,
+  // unitService,
+  // tenantService,
   paymentService,
-  maintenanceService,
-  dbUtils,
+  // maintenanceService,
+  // dbUtils,
 } from "../services/database";
-import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
+import { Payment } from "../types";
 
 // Payments hook
 export function usePayments(filter?: {
@@ -84,6 +84,6 @@ export function usePayments(filter?: {
     refetch: fetchPayments,
   };
 }
-function useAsyncOperation<T>(): { execute: any; loading: any } {
+function useAsyncOperation<_T>(): { execute: any; loading: any } {
   return { execute: null, loading: null };
 }

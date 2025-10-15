@@ -1,69 +1,84 @@
-import React, { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { X, User, Phone, Mail, CreditCard, Calendar, Home } from 'lucide-react'
-import LoadingSpinner from '../LoadingSpinner'
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { X, User, Phone, Home } from "lucide-react";
+import LoadingSpinner from "../LoadingSpinner";
 
 const tenantSchema = z.object({
-  name: z.string().min(1, 'Full name is required'),
-  email: z.string().email('Valid email is required'),
-  phone: z.string().min(10, 'Valid phone number is required'),
-  idNumber: z.string().min(1, 'ID number is required'),
-  unitId: z.string().min(1, 'Unit selection is required'),
-  leaseStartDate: z.string().min(1, 'Lease start date is required'),
-  leaseEndDate: z.string().min(1, 'Lease end date is required'),
-  emergencyContactName: z.string().min(1, 'Emergency contact name is required'),
-  emergencyContactPhone: z.string().min(10, 'Emergency contact phone is required'),
-  emergencyContactRelationship: z.string().min(1, 'Relationship is required'),
-})
+  name: z.string().min(1, "Full name is required"),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(10, "Valid phone number is required"),
+  idNumber: z.string().min(1, "ID number is required"),
+  unitId: z.string().min(1, "Unit selection is required"),
+  leaseStartDate: z.string().min(1, "Lease start date is required"),
+  leaseEndDate: z.string().min(1, "Lease end date is required"),
+  emergencyContactName: z.string().min(1, "Emergency contact name is required"),
+  emergencyContactPhone: z
+    .string()
+    .min(10, "Emergency contact phone is required"),
+  emergencyContactRelationship: z.string().min(1, "Relationship is required"),
+});
 
-type TenantForm = z.infer<typeof tenantSchema>
+type TenantForm = z.infer<typeof tenantSchema>;
 
 interface AddTenantModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (data: TenantForm) => Promise<void>
-  availableUnits: Array<{ id: string; unitNumber: string; propertyName: string; rent: number }>
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: TenantForm) => Promise<void>;
+  availableUnits: Array<{
+    id: string;
+    unitNumber: string;
+    propertyName: string;
+    rent: number;
+  }>;
 }
 
-export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUnits }: AddTenantModalProps) {
-  const [loading, setLoading] = useState(false)
-  
+export default function AddTenantModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  availableUnits,
+}: AddTenantModalProps) {
+  const [loading, setLoading] = useState(false);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
-    reset
+    reset,
   } = useForm<TenantForm>({
-    resolver: zodResolver(tenantSchema)
-  })
+    resolver: zodResolver(tenantSchema),
+  });
 
   const handleFormSubmit = async (data: TenantForm) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      await onSubmit(data)
-      reset()
-      onClose()
+      await onSubmit(data);
+      reset();
+      onClose();
     } catch (error) {
-      console.error('Error adding tenant:', error)
+      console.error("Error adding tenant:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleClose = () => {
-    reset()
-    onClose()
-  }
+    reset();
+    onClose();
+  };
 
-  if (!isOpen) return null
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-secondary-900 bg-opacity-50" onClick={handleClose} />
-        
+        <div
+          className="fixed inset-0 transition-opacity bg-secondary-900 bg-opacity-50"
+          onClick={handleClose}
+        />
+
         <div className="inline-block w-full max-w-3xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-secondary-800 shadow-xl rounded-xl">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
@@ -71,8 +86,12 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                 <User className="h-6 w-6 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">Add New Tenant</h3>
-                <p className="text-sm text-secondary-600 dark:text-secondary-400">Register a new tenant and assign to unit</p>
+                <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                  Add New Tenant
+                </h3>
+                <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                  Register a new tenant and assign to unit
+                </p>
               </div>
             </div>
             <button
@@ -96,13 +115,15 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Full Name
                   </label>
                   <input
-                    {...register('name')}
+                    {...register("name")}
                     type="text"
                     className="input-field"
                     placeholder="John Doe"
                   />
                   {errors.name && (
-                    <p className="mt-1 text-sm text-error-600">{errors.name.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.name.message}
+                    </p>
                   )}
                 </div>
 
@@ -111,13 +132,15 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     ID Number
                   </label>
                   <input
-                    {...register('idNumber')}
+                    {...register("idNumber")}
                     type="text"
                     className="input-field"
                     placeholder="12345678"
                   />
                   {errors.idNumber && (
-                    <p className="mt-1 text-sm text-error-600">{errors.idNumber.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.idNumber.message}
+                    </p>
                   )}
                 </div>
 
@@ -126,13 +149,15 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Email Address
                   </label>
                   <input
-                    {...register('email')}
+                    {...register("email")}
                     type="email"
                     className="input-field"
                     placeholder="john@example.com"
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-error-600">{errors.email.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
 
@@ -141,13 +166,15 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Phone Number
                   </label>
                   <input
-                    {...register('phone')}
+                    {...register("phone")}
                     type="tel"
                     className="input-field"
                     placeholder="+254712345678"
                   />
                   {errors.phone && (
-                    <p className="mt-1 text-sm text-error-600">{errors.phone.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.phone.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -164,14 +191,19 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                   <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
                     Available Unit
                   </label>
-                  <select {...register('unitId')} className="input-field">
+                  <select {...register("unitId")} className="input-field">
                     <option value="">Select unit</option>
-                    {availableUnits.map(u => (
-                      <option key={u.id} value={u.id}>{u.propertyName} - Unit {u.unitNumber} ({u.rent.toLocaleString()})</option>
+                    {availableUnits.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.propertyName} - Unit {u.unitNumber} (
+                        {u.rent.toLocaleString()})
+                      </option>
                     ))}
                   </select>
                   {errors.unitId && (
-                    <p className="mt-1 text-sm text-error-600">{errors.unitId.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.unitId.message}
+                    </p>
                   )}
                 </div>
 
@@ -180,12 +212,14 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Lease Start Date
                   </label>
                   <input
-                    {...register('leaseStartDate')}
+                    {...register("leaseStartDate")}
                     type="date"
                     className="input-field"
                   />
                   {errors.leaseStartDate && (
-                    <p className="mt-1 text-sm text-error-600">{errors.leaseStartDate.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.leaseStartDate.message}
+                    </p>
                   )}
                 </div>
 
@@ -194,12 +228,14 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Lease End Date
                   </label>
                   <input
-                    {...register('leaseEndDate')}
+                    {...register("leaseEndDate")}
                     type="date"
                     className="input-field"
                   />
                   {errors.leaseEndDate && (
-                    <p className="mt-1 text-sm text-error-600">{errors.leaseEndDate.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.leaseEndDate.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -217,13 +253,15 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Contact Name
                   </label>
                   <input
-                    {...register('emergencyContactName')}
+                    {...register("emergencyContactName")}
                     type="text"
                     className="input-field"
                     placeholder="Mary Doe"
                   />
                   {errors.emergencyContactName && (
-                    <p className="mt-1 text-sm text-error-600">{errors.emergencyContactName.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.emergencyContactName.message}
+                    </p>
                   )}
                 </div>
 
@@ -232,13 +270,15 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     Contact Phone
                   </label>
                   <input
-                    {...register('emergencyContactPhone')}
+                    {...register("emergencyContactPhone")}
                     type="tel"
                     className="input-field"
                     placeholder="+254787654321"
                   />
                   {errors.emergencyContactPhone && (
-                    <p className="mt-1 text-sm text-error-600">{errors.emergencyContactPhone.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.emergencyContactPhone.message}
+                    </p>
                   )}
                 </div>
 
@@ -246,7 +286,10 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                   <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-2">
                     Relationship
                   </label>
-                  <select {...register('emergencyContactRelationship')} className="input-field">
+                  <select
+                    {...register("emergencyContactRelationship")}
+                    className="input-field"
+                  >
                     <option value="">Select relationship</option>
                     <option value="spouse">Spouse</option>
                     <option value="parent">Parent</option>
@@ -256,7 +299,9 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
                     <option value="other">Other</option>
                   </select>
                   {errors.emergencyContactRelationship && (
-                    <p className="mt-1 text-sm text-error-600">{errors.emergencyContactRelationship.message}</p>
+                    <p className="mt-1 text-sm text-error-600">
+                      {errors.emergencyContactRelationship.message}
+                    </p>
                   )}
                 </div>
               </div>
@@ -271,18 +316,14 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={loading}
-              >
+              <button type="submit" className="btn-primary" disabled={loading}>
                 {loading ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
                     Adding...
                   </>
                 ) : (
-                  'Add Tenant'
+                  "Add Tenant"
                 )}
               </button>
             </div>
@@ -290,5 +331,5 @@ export default function AddTenantModal({ isOpen, onClose, onSubmit, availableUni
         </div>
       </div>
     </div>
-  )
-} 
+  );
+}

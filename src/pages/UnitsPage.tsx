@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -15,29 +15,18 @@ import {
   FileText,
   Edit,
   X,
-  Eye,
   UserPlus,
   CreditCard,
   Camera,
 } from "lucide-react";
 import { formatCurrency } from "../utils/currency";
-import {
-  unitService,
-  propertyService,
-  tenantService,
-} from "../services/database";
-import {
-  localUnitService,
-  localPropertyService,
-} from "../services/localStorage";
-import { Unit, Property } from "../types";
+import { Unit } from "../types";
 import AddUnitModal from "../components/modals/AddUnitModal";
 import EditUnitModal from "../components/modals/EditUnitModal";
 import ViewTenantModal from "@/components/modals/ViewTenantModal";
 import AddTenantModal from "../components/modals/AddTenantModal";
 import { useAvailableUnits } from "@/hooks/unitsHook";
 import { useUnits } from "@/hooks/unitsHook";
-import { useProperties } from "@/hooks/propertiesHook";
 import { useTenants } from "@/hooks/tenantsHook";
 
 export default function UnitsPage() {
@@ -54,23 +43,13 @@ export default function UnitsPage() {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
 
   const [viewTenantModalOpen, setViewTenantModalOpen] = useState(false);
-  const [viewingTenantId, setViewingTenantId] = useState<string | null>(null);
   const [viewingTenant, setViewingTenant] = useState<any>(null);
   const { createTenant } = useTenants();
 
-  const propertyId = searchParams.get("propertyId");
   const propertyName = searchParams.get("propertyName");
 
-  const {
-    units,
-    properties,
-    tenants,
-    createUnit,
-    updateUnit,
-    deleteUnit,
-    refetch,
-    loading,
-  } = useUnits();
+  const { units, properties, tenants, createUnit, updateUnit, loading } =
+    useUnits();
 
   const getStatusIcon = (status: string) => {
     switch (status) {

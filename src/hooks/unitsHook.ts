@@ -4,11 +4,11 @@ import {
   propertyService,
   unitService,
   tenantService,
-  paymentService,
-  maintenanceService,
-  dbUtils,
+  // paymentService,
+  // maintenanceService,
+  // dbUtils,
 } from "../services/database";
-import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
+import { Property, Unit, Tenant } from "../types";
 import { useAuthStore } from "@/stores/authStore";
 
 // Units hook
@@ -20,7 +20,6 @@ export function useUnits(propertyId?: string) {
   const { execute, loading: operationLoading } = useAsyncOperation<
     string | void
   >();
-  const { user } = useAuthStore();
 
   const fetchUnits = async () => {
     setLoading(true);
@@ -129,7 +128,7 @@ export function useAvailableUnits() {
     refetch: fetchAvailableUnits,
   };
 }
-function useAsyncOperation<T>(): { execute: any; loading: any } {
+function useAsyncOperation<_T>(): { execute: any; loading: any } {
   return { execute: null, loading: null };
 }
 

@@ -10,7 +10,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { User } from "../types";
 import toast from "react-hot-toast";
-import { createDocument } from "@/lib/db";
 
 interface AuthState {
   user: User | null;

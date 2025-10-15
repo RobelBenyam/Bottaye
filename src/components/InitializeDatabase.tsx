@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Database, Loader2 } from 'lucide-react';
-import { initializeLocalData } from '../services/localInitialize';
+import { useState } from "react";
+import { Database, Loader2 } from "lucide-react";
+import { initializeLocalData } from "../services/localInitialize";
 
 export default function InitializeDatabase() {
   const [loading, setLoading] = useState(false);
@@ -11,20 +11,20 @@ export default function InitializeDatabase() {
     try {
       // Use local storage for now (safe fallback)
       const success = await initializeLocalData();
-      
+
       if (success) {
         setCompleted(true);
-        
+
         // Don't reload page - just notify parent to refresh data
         setTimeout(() => {
           // Trigger a custom event to refresh the properties list
-          window.dispatchEvent(new CustomEvent('dataInitialized'));
+          window.dispatchEvent(new CustomEvent("dataInitialized"));
         }, 1000);
       } else {
-        console.error('Failed to initialize data');
+        console.error("Failed to initialize data");
       }
     } catch (error) {
-      console.error('Failed to initialize database:', error);
+      console.error("Failed to initialize database:", error);
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,8 @@ export default function InitializeDatabase() {
         Initialize Your Database
       </h3>
       <p className="text-secondary-600 dark:text-secondary-400 mb-6 max-w-md mx-auto">
-        Get started by setting up sample properties and units in your Firestore database.
+        Get started by setting up sample properties and units in your Firestore
+        database.
       </p>
       <button
         onClick={handleInitialize}
@@ -77,7 +78,7 @@ export default function InitializeDatabase() {
           </>
         )}
       </button>
-      
+
       <div className="mt-6 text-sm text-secondary-500 dark:text-secondary-400 max-w-lg mx-auto">
         <p className="font-medium mb-2">This will create:</p>
         <ul className="space-y-1">
@@ -88,4 +89,4 @@ export default function InitializeDatabase() {
       </div>
     </div>
   );
-} 
+}

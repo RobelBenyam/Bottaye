@@ -13,11 +13,11 @@ import {
 import { formatCurrency } from "@/utils/currency";
 import { Tenant } from "@/types";
 
-interface EmergencyContact {
-  name: string;
-  phone: string;
-  relationship: string;
-}
+// interface EmergencyContact {
+//   name: string;
+//   phone: string;
+//   relationship: string;
+// }
 
 interface ViewTenantModalProps {
   isOpen: boolean;

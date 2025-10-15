@@ -4,11 +4,11 @@ import {
   propertyService,
   unitService,
   tenantService,
-  paymentService,
-  maintenanceService,
-  dbUtils,
+  // paymentService,
+  // maintenanceService,
+  // dbUtils,
 } from "../services/database";
-import { Property, Unit, Tenant, Payment, Maintenance } from "../types";
+import { Tenant } from "../types";
 import { useAuthStore } from "@/stores/authStore";
 
 // Tenants hook
@@ -18,7 +18,6 @@ export function useTenants() {
   const { execute, loading: operationLoading } = useAsyncOperation<
     string | void
   >();
-  const { user } = useAuthStore();
 
   const fetchTenants = async () => {
     setLoading(true);
@@ -96,7 +95,7 @@ export function useTenants() {
     refetch: fetchTenants,
   };
 }
-function useAsyncOperation<T>(): { execute: any; loading: any } {
+function useAsyncOperation<_T>(): { execute: any; loading: any } {
   return { execute: null, loading: null };
 }
 
@@ -115,17 +114,10 @@ export function useTenantsForUser() {
     console.log("yes user");
 
     try {
-      // Get user's properties first
-      const userProperties = await propertyService.getByUserId(user.id);
-      const propertyIds = userProperties.map((p) => p.id);
-
-      const units = await unitService.getByPropertyIds(propertyIds);
-      const unitIds = units.map((u) => u.id);
-
       // Get tenants for those units
       const allTenants = await tenantService.getAll();
       const filteredTenants = allTenants.filter(
-        (tenant) => true
+        (_tenant) => true
         // tenant.unitId && unitIds.includes(tenant.unitId)
       );
 

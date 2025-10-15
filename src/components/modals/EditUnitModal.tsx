@@ -149,7 +149,7 @@ export default function EditUnitModal({
     setIsLoading(true);
     try {
       const uploadedImageUrls = await Promise.all(
-        selectedImages.map(async (imageDataUrl, index) => {
+        selectedImages.map(async (imageDataUrl, _index) => {
           // Convert data URL to Blob
           const res = await fetch(imageDataUrl);
           const blob = await res.blob();

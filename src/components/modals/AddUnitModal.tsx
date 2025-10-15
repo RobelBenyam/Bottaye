@@ -2,15 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {
-  X,
-  DoorOpen,
-  Hash,
-  DollarSign,
-  Upload,
-  Image,
-  FileText,
-} from "lucide-react";
+import { X, DoorOpen, Hash, DollarSign, Image, FileText } from "lucide-react";
 import LoadingSpinner from "../LoadingSpinner";
 import { uploadFileToCloudinary } from "@/lib/file";
 
@@ -44,7 +36,6 @@ interface AddUnitModalProps {
 export default function AddUnitModal({
   isOpen,
   onClose,
-  onSubmit,
   properties,
 }: AddUnitModalProps) {
   const [loading, setLoading] = useState(false);
@@ -57,13 +48,10 @@ export default function AddUnitModal({
     handleSubmit,
     formState: { errors },
     reset,
-    watch,
     setValue,
   } = useForm<UnitForm>({
     resolver: zodResolver(unitSchema),
   });
-
-  const rentValue = watch("rent");
 
   const handleImageUpload = (files: FileList | null) => {
     if (!files) return;
@@ -131,7 +119,7 @@ export default function AddUnitModal({
         throw new Error("Property not found");
       }
       const uploadedImageUrls = await Promise.all(
-        selectedImages.map(async (imageDataUrl, index) => {
+        selectedImages.map(async (imageDataUrl, _index) => {
           // Convert data URL to Blob
           const res = await fetch(imageDataUrl);
           const blob = await res.blob();

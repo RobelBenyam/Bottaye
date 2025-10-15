@@ -2,7 +2,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { X, Building2, Upload, Camera, Image } from "lucide-react";
+import { X, Building2, Upload } from "lucide-react";
 import { uploadFileToCloudinary } from "@/lib/file";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -27,7 +27,7 @@ interface AddPropertyModalProps {
 export default function AddPropertyModal({
   isOpen,
   onClose,
-  onSubmit: onModalSubmit,
+  onSubmit: _onModalSubmit,
 }: AddPropertyModalProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedImages, setSelectedImages] = React.useState<string[]>([]);
@@ -37,7 +37,6 @@ export default function AddPropertyModal({
     register,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
   } = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -85,7 +84,7 @@ export default function AddPropertyModal({
     try {
       const { propertyService } = await import("../../services/database");
       const uploadedImageUrls = await Promise.all(
-        selectedImages.map(async (imageDataUrl, index) => {
+        selectedImages.map(async (imageDataUrl, _index) => {
           const res = await fetch(imageDataUrl);
           const blob = await res.blob();
           const imageUrl = await uploadFileToCloudinary(blob, "properties");
