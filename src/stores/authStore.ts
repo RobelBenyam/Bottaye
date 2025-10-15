@@ -1,35 +1,39 @@
-import { create } from 'zustand'
-import { 
-  signInWithEmailAndPassword, 
+import { create } from "zustand";
+import {
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  User as FirebaseUser 
-} from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
-import { auth, db } from '../lib/firebase'
-import { User } from '../types'
-import toast from 'react-hot-toast'
+  User as FirebaseUser,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { auth, db } from "../lib/firebase";
+import { User } from "../types";
+import toast from "react-hot-toast";
+import { createDocument } from "@/lib/db";
 
 interface AuthState {
-  user: User | null
-  loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signOut: () => Promise<void>
-  initializeAuth: () => void
+  user: User | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, name: string) => Promise<void>;
+
+  signOut: () => Promise<void>;
+  initializeAuth: () => void;
 }
 
 // Helper functions for localStorage persistence
 const saveUserToStorage = (user: User | null) => {
   if (user) {
-    localStorage.setItem('bottaye_user', JSON.stringify(user));
+    localStorage.setItem("bottaye_user", JSON.stringify(user));
   } else {
-    localStorage.removeItem('bottaye_user');
+    localStorage.removeItem("bottaye_user");
   }
 };
 
 const getUserFromStorage = (): User | null => {
   try {
-    const stored = localStorage.getItem('bottaye_user');
+    const stored = localStorage.getItem("bottaye_user");
     if (stored) {
       const user = JSON.parse(stored);
       // Convert date strings back to Date objects
@@ -38,8 +42,8 @@ const getUserFromStorage = (): User | null => {
       return user;
     }
   } catch (error) {
-    console.error('Error loading user from storage:', error);
-    localStorage.removeItem('bottaye_user');
+    console.error("Error loading user from storage:", error);
+    localStorage.removeItem("bottaye_user");
   }
   return null;
 };
@@ -50,15 +54,20 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signIn: async (email: string, password: string) => {
     try {
-      set({ loading: true })
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid))
-      
+      set({ loading: true });
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      console.log("Signed in user:", userCredential);
+      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+
       if (!userDoc.exists()) {
-        throw new Error('User profile not found')
+        throw new Error("User profile not found");
       }
 
-      const userData = userDoc.data()
+      const userData = userDoc.data();
       const user: User = {
         id: userCredential.user.uid,
         email: userData.email,
@@ -67,64 +76,103 @@ export const useAuthStore = create<AuthState>((set) => ({
         propertyIds: userData.propertyIds || [],
         createdAt: userData.createdAt?.toDate() || new Date(),
         updatedAt: userData.updatedAt?.toDate() || new Date(),
-      }
+      };
 
-              saveUserToStorage(user); // Save to localStorage
-        set({ user, loading: false })
-      toast.success(`Welcome back, ${user.name}!`)
+      saveUserToStorage(user); // Save to localStorage
+      set({ user, loading: false });
+      toast.success(`Welcome back, ${user.name}!`);
     } catch (error: any) {
-      set({ loading: false })
-      toast.error(error.message || 'Failed to sign in')
-      throw error
+      set({ loading: false });
+      toast.error(error.message || "Failed to sign in");
+      throw error;
+    }
+  },
+
+  signUp: async (email: string, password: string, name: string) => {
+    try {
+      set({ loading: true });
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      // After sign up, user needs to log in to fetch profile
+      const userObj: User = {
+        id: userCredential.user.uid,
+        email,
+        name,
+        role: "admin",
+        propertyIds: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        id: userCredential.user.uid,
+        email,
+        name,
+        role: "admin",
+        propertyIds: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      saveUserToStorage(userObj); // Save to localStorage
+      set({ user: userObj, loading: false });
+    } catch (error: any) {
+      set({ loading: false });
+      toast.error(error.message || "Failed to sign up");
+      throw error;
     }
   },
 
   signOut: async () => {
     try {
-      await firebaseSignOut(auth)
+      await firebaseSignOut(auth);
       saveUserToStorage(null); // Clear from localStorage
-      set({ user: null })
-      toast.success('Signed out successfully')
+      set({ user: null });
+      toast.success("Signed out successfully");
     } catch (error: any) {
-      toast.error('Failed to sign out')
-      throw error
+      toast.error("Failed to sign out");
+      throw error;
     }
   },
 
   initializeAuth: () => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
-          
-          if (userDoc.exists()) {
-            const userData = userDoc.data()
-            const user: User = {
-              id: firebaseUser.uid,
-              email: userData.email,
-              name: userData.name,
-              role: userData.role,
-              propertyIds: userData.propertyIds || [],
-              createdAt: userData.createdAt?.toDate() || new Date(),
-              updatedAt: userData.updatedAt?.toDate() || new Date(),
-            }
-            saveUserToStorage(user);
-            set({ user, loading: false })
-          } else {
-            saveUserToStorage(null);
-            set({ user: null, loading: false })
-          }
-        } catch (error) {
-          console.error('Firebase auth error:', error);
-          saveUserToStorage(null);
-          set({ user: null, loading: false })
-        }
-      } else {
-        saveUserToStorage(null);
-        set({ user: null, loading: false })
-      }
-    })
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (firebaseUser: FirebaseUser | null) => {
+        if (firebaseUser) {
+          try {
+            const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
 
-    return unsubscribe
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              const user: User = {
+                id: firebaseUser.uid,
+                email: userData.email,
+                name: userData.name,
+                role: userData.role,
+                propertyIds: userData.propertyIds || [],
+                createdAt: userData.createdAt?.toDate() || new Date(),
+                updatedAt: userData.updatedAt?.toDate() || new Date(),
+              };
+              saveUserToStorage(user);
+              set({ user, loading: false });
+            } else {
+              saveUserToStorage(null);
+              set({ user: null, loading: false });
+            }
+          } catch (error) {
+            console.error("Firebase auth error:", error);
+            saveUserToStorage(null);
+            set({ user: null, loading: false });
+          }
+        } else {
+          saveUserToStorage(null);
+          set({ user: null, loading: false });
+        }
+      }
+    );
+
+    return unsubscribe;
   },
-})) 
+}));

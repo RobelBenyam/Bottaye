@@ -1,272 +1,154 @@
-import React, { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Plus, Search, Filter, Home, User, CheckCircle, AlertCircle, Wrench, ArrowLeft, DoorOpen, Image as ImageIcon, FileText, Edit, X, Eye, UserPlus, CreditCard, Camera } from 'lucide-react'
-import { formatCurrency } from '../utils/currency'
-import { unitService, propertyService } from '../services/database'
-import { localUnitService, localPropertyService } from '../services/localStorage'
-import { Unit, Property } from '../types'
-import AddUnitModal from '../components/modals/AddUnitModal'
-import EditUnitModal from '../components/modals/EditUnitModal'
-import { useAuthStore } from '../stores/authStore'
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import {
+  Plus,
+  Search,
+  Filter,
+  Home,
+  User,
+  CheckCircle,
+  AlertCircle,
+  Wrench,
+  ArrowLeft,
+  DoorOpen,
+  Image as ImageIcon,
+  FileText,
+  Edit,
+  X,
+  Eye,
+  UserPlus,
+  CreditCard,
+  Camera,
+} from "lucide-react";
+import { formatCurrency } from "../utils/currency";
+import {
+  unitService,
+  propertyService,
+  tenantService,
+} from "../services/database";
+import {
+  localUnitService,
+  localPropertyService,
+} from "../services/localStorage";
+import { Unit, Property } from "../types";
+import AddUnitModal from "../components/modals/AddUnitModal";
+import EditUnitModal from "../components/modals/EditUnitModal";
+import ViewTenantModal from "@/components/modals/ViewTenantModal";
+import AddTenantModal from "../components/modals/AddTenantModal";
+import { useAvailableUnits } from "@/hooks/unitsHook";
+import { useUnits } from "@/hooks/unitsHook";
+import { useProperties } from "@/hooks/propertiesHook";
+import { useTenants } from "@/hooks/tenantsHook";
 
 export default function UnitsPage() {
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [units, setUnits] = useState<Unit[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingUnit, setEditingUnit] = useState<Unit | null>(null)
-  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
-  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
-  const [properties, setProperties] = useState<Property[]>([])
-  
-  const propertyId = searchParams.get('propertyId')
-  const propertyName = searchParams.get('propertyName')
+  const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
+  const { availableUnits } = useAvailableUnits();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null);
 
-  // Load units and properties data
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        let unitsData;
-        let propertiesData;
-        
-        try {
-          // Try Firebase first - pass user for filtering
-          if (propertyId) {
-            unitsData = await unitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await unitService.getAll(user);
-          }
-          propertiesData = await propertyService.getAll(user);
-          console.log('✅ Using Firebase data');
-        } catch (firebaseError) {
-          // Fallback to localStorage
-          console.log('🔄 Firebase failed, using localStorage');
-          if (propertyId) {
-            unitsData = await localUnitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await localUnitService.getAll();
-          }
-          propertiesData = await localPropertyService.getAll();
-        }
-        
-        setUnits(unitsData);
-        setProperties(propertiesData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadData();
-  }, [propertyId, user]);
+  const [viewTenantModalOpen, setViewTenantModalOpen] = useState(false);
+  const [viewingTenantId, setViewingTenantId] = useState<string | null>(null);
+  const [viewingTenant, setViewingTenant] = useState<any>(null);
+  const { createTenant } = useTenants();
 
-  const mockUnits = [
-    {
-      id: '1',
-      unitNumber: '2A',
-      propertyName: 'Westlands Plaza',
-      type: '2_bedroom',
-      rent: 45000,
-      deposit: 90000,
-      status: 'occupied',
-      tenantName: 'John Doe',
-      tenantPhone: '+254712345678',
-      leaseEnd: '2024-12-31'
-    },
-    {
-      id: '2',
-      unitNumber: 'Shop 5',
-      propertyName: 'Westlands Plaza',
-      type: 'shop',
-      rent: 80000,
-      deposit: 160000,
-      status: 'vacant',
-      tenantName: null,
-      tenantPhone: null,
-      leaseEnd: null
-    },
-    {
-      id: '3',
-      unitNumber: '1B',
-      propertyName: 'Kilimani Heights',
-      type: '1_bedroom',
-      rent: 30000,
-      deposit: 60000,
-      status: 'occupied',
-      tenantName: 'Jane Smith',
-      tenantPhone: '+254723456789',
-      leaseEnd: '2025-03-15'
-    },
-    {
-      id: '4',
-      unitNumber: '3C',
-      propertyName: 'Kilimani Heights',
-      type: '3_bedroom',
-      rent: 65000,
-      deposit: 130000,
-      status: 'maintenance',
-      tenantName: null,
-      tenantPhone: null,
-      leaseEnd: null
-    },
-    {
-      id: '5',
-      unitNumber: 'A1',
-      propertyName: 'Karen Residences',
-      type: '4_bedroom',
-      rent: 85000,
-      deposit: 170000,
-      status: 'occupied',
-      tenantName: 'Michael Johnson',
-      tenantPhone: '+254734567890',
-      leaseEnd: '2024-11-30'
-    },
-    {
-      id: '6',
-      unitNumber: 'B2',
-      propertyName: 'Karen Residences',
-      type: '2_bedroom',
-      rent: 55000,
-      deposit: 110000,
-      status: 'vacant',
-      tenantName: null,
-      tenantPhone: null,
-      leaseEnd: null
-    }
-  ]
+  const propertyId = searchParams.get("propertyId");
+  const propertyName = searchParams.get("propertyName");
+
+  const {
+    units,
+    properties,
+    tenants,
+    createUnit,
+    updateUnit,
+    deleteUnit,
+    refetch,
+    loading,
+  } = useUnits();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'occupied':
-        return <CheckCircle className="h-5 w-5 text-success-600" />
-      case 'vacant':
-        return <Home className="h-5 w-5 text-secondary-400" />
-      case 'maintenance':
-        return <Wrench className="h-5 w-5 text-warning-600" />
+      case "occupied":
+        return <CheckCircle className="h-5 w-5 text-success-600" />;
+      case "vacant":
+        return <Home className="h-5 w-5 text-secondary-400" />;
+      case "maintenance":
+        return <Wrench className="h-5 w-5 text-warning-600" />;
       default:
-        return <AlertCircle className="h-5 w-5 text-secondary-400" />
+        return <AlertCircle className="h-5 w-5 text-secondary-400" />;
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      occupied: 'bg-success-100 text-success-700',
-      vacant: 'bg-secondary-100 text-secondary-700',
-      maintenance: 'bg-warning-100 text-warning-700'
-    }
-    return `px-2 py-1 text-xs font-medium rounded-full ${styles[status as keyof typeof styles]}`
-  }
+      occupied: "bg-success-100 text-success-700",
+      vacant: "bg-secondary-100 text-secondary-700",
+      maintenance: "bg-warning-100 text-warning-700",
+    };
+    return `px-2 py-1 text-xs font-medium rounded-full ${
+      styles[status as keyof typeof styles]
+    }`;
+  };
 
   const getUnitTypeLabel = (type: string) => {
     const types = {
-      'studio': 'Studio',
-      '1_bedroom': '1 Bedroom',
-      '2_bedroom': '2 Bedroom',
-      '3_bedroom': '3 Bedroom',
-      '4_bedroom': '4 Bedroom',
-      'office': 'Office',
-      'shop': 'Shop'
-    }
-    return types[type as keyof typeof types] || type
-  }
+      studio: "Studio",
+      "1_bedroom": "1 Bedroom",
+      "2_bedroom": "2 Bedroom",
+      "3_bedroom": "3 Bedroom",
+      "4_bedroom": "4 Bedroom",
+      office: "Office",
+      shop: "Shop",
+    };
+    return types[type as keyof typeof types] || type;
+  };
 
-  const filteredUnits = units.filter(unit => {
-    const matchesSearch = unit.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         unit.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterStatus === 'all' || unit.status === filterStatus
-    return matchesSearch && matchesFilter
-  })
+  const filteredUnits = units.filter((unit) => {
+    const matchesSearch =
+      unit.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      unit.propertyName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter =
+      filterStatus === "all" || unit.status === filterStatus;
+    return matchesSearch && matchesFilter;
+  });
 
   const handleUnitSubmit = async (data: any) => {
     try {
-      // Try Firebase first, fallback to localStorage
-      try {
-        await unitService.create(data);
-      } catch (firebaseError) {
-        await localUnitService.create(data);
-      }
-      
-      // Refresh units list
-      const loadData = async () => {
-        let unitsData;
-        try {
-          if (propertyId) {
-            unitsData = await unitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await unitService.getAll();
-          }
-        } catch (firebaseError) {
-          if (propertyId) {
-            unitsData = await localUnitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await localUnitService.getAll();
-          }
-        }
-        setUnits(unitsData);
-      };
-      await loadData();
-      
+      await createUnit(data);
       setIsAddModalOpen(false);
     } catch (error) {
-      console.error('Error creating unit:', error);
+      console.error("Error creating unit:", error);
       throw error;
     }
-  }
+  };
 
   const handleEditUnit = (unit: Unit) => {
     setEditingUnit(unit);
     setIsEditModalOpen(true);
-  }
+  };
 
   const handleUnitClick = (unit: Unit) => {
     setSelectedUnit(unit);
     setIsQuickActionsOpen(true);
-  }
+  };
 
   const handleUpdateUnit = async (data: any) => {
     if (!editingUnit) return;
-    
     try {
-      // Try Firebase first, fallback to localStorage
-      try {
-        await unitService.update(editingUnit.id, data);
-      } catch (firebaseError) {
-        await localUnitService.update(editingUnit.id, data);
-      }
-      
-      // Refresh units list
-      const loadData = async () => {
-        let unitsData;
-        try {
-          if (propertyId) {
-            unitsData = await unitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await unitService.getAll();
-          }
-        } catch (firebaseError) {
-          if (propertyId) {
-            unitsData = await localUnitService.getByPropertyId(propertyId);
-          } else {
-            unitsData = await localUnitService.getAll();
-          }
-        }
-        setUnits(unitsData);
-      };
-      await loadData();
-      
+      await updateUnit(editingUnit.id, data);
       setIsEditModalOpen(false);
       setEditingUnit(null);
     } catch (error) {
-      console.error('Error updating unit:', error);
+      console.error("Error updating unit:", error);
       throw error;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -274,8 +156,8 @@ export default function UnitsPage() {
         <div>
           <div className="flex items-center space-x-4">
             {propertyName && (
-              <button 
-                onClick={() => navigate('/properties')}
+              <button
+                onClick={() => navigate("/properties")}
                 className="flex items-center text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
               >
                 <ArrowLeft className="h-5 w-5 mr-2" />
@@ -284,10 +166,12 @@ export default function UnitsPage() {
             )}
           </div>
           <h1 className="text-3xl font-bold text-secondary-900 dark:text-secondary-100">
-            {propertyName ? `${propertyName} - Units` : 'Units'}
+            {propertyName ? `${propertyName} - Units` : "Units"}
           </h1>
           <p className="text-secondary-600 dark:text-secondary-400 mt-1">
-            {propertyName ? `Manage units in ${propertyName}` : 'Monitor and manage individual units across all properties.'}
+            {propertyName
+              ? `Manage units in ${propertyName}`
+              : "Monitor and manage individual units across all properties."}
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -295,7 +179,7 @@ export default function UnitsPage() {
             <Home className="h-5 w-5 mr-2" />
             Bulk Edit
           </button>
-          <button 
+          <button
             onClick={() => setIsAddModalOpen(true)}
             className="btn-primary flex items-center"
           >
@@ -318,7 +202,7 @@ export default function UnitsPage() {
             />
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Filter className="h-5 w-5 text-secondary-400" />
           <select
@@ -336,170 +220,192 @@ export default function UnitsPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="text-lg text-secondary-600 dark:text-secondary-400">Loading units...</div>
+          <div className="text-lg text-secondary-600 dark:text-secondary-400">
+            Loading units...
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        {filteredUnits.map((unit) => (
-          <div 
-            key={unit.id} 
-            className="card-hover group relative overflow-hidden cursor-pointer"
-            onClick={() => handleUnitClick(unit)}
-          >
-            {/* Unit Image */}
-            <div className="relative h-40 mb-4 rounded-lg overflow-hidden bg-secondary-100 dark:bg-secondary-700">
-              {unit.images && unit.images.length > 0 ? (
-                <img
-                  src={unit.images[0]}
-                  alt={`Unit ${unit.unitNumber}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <DoorOpen className="h-12 w-12 text-secondary-300 dark:text-secondary-600" />
-                </div>
-              )}
-              
-              {/* Image count indicator */}
-              {unit.images && unit.images.length > 1 && (
-                <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
-                  <ImageIcon className="h-3 w-3 mr-1" />
-                  {unit.images.length}
-                </div>
-              )}
-              
-              {/* Floor plan indicator */}
-              {unit.floorPlan && (
-                <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
-                  <FileText className="h-3 w-3 mr-1" />
-                  Plan
-                </div>
-              )}
-              
-              {/* Status badge */}
-              <div className="absolute bottom-2 right-2">
-                <span className={getStatusBadge(unit.status)}>
-                  {unit.status}
-                </span>
-              </div>
-
-              {/* Edit Button - Shows on hover */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEditUnit(unit);
-                }}
-                className="absolute bottom-2 left-2 p-2 bg-white dark:bg-secondary-800 rounded-lg shadow-md hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-all duration-200 opacity-0 group-hover:opacity-100"
-                title="Edit Unit"
-              >
-                <Edit className="h-4 w-4 text-secondary-600 dark:text-secondary-400" />
-              </button>
-            </div>
-
-            <div className="px-1">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
-                    Unit {unit.unitNumber}
-                  </h3>
-                  <p className="text-sm text-secondary-600 dark:text-secondary-400">{unit.propertyName}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {getStatusIcon(unit.status)}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-secondary-600 dark:text-secondary-400">Type</span>
-                <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                  {getUnitTypeLabel(unit.type)}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-secondary-600 dark:text-secondary-400">Rent</span>
-                <span className="font-semibold text-secondary-900 dark:text-secondary-100">
-                  {formatCurrency(unit.rent)}/month
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-secondary-600 dark:text-secondary-400">Deposit</span>
-                <span className="font-medium text-secondary-900 dark:text-secondary-100">
-                  {formatCurrency(unit.deposit)}
-                </span>
-              </div>
-
-              {unit.status === 'occupied' && unit.tenantName && (
-                <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <User className="h-4 w-4 text-secondary-400" />
-                    <span className="font-medium text-secondary-900 dark:text-secondary-100">{unit.tenantName}</span>
+          {filteredUnits.map((unit) => (
+            <div
+              key={unit.id}
+              className="card-hover group relative overflow-hidden cursor-pointer"
+              onClick={() => handleUnitClick(unit)}
+            >
+              {/* Unit Image */}
+              <div className="relative h-40 mb-4 rounded-lg overflow-hidden bg-secondary-100 dark:bg-secondary-700">
+                {unit.images && unit.images.length > 0 ? (
+                  <img
+                    src={unit.images[0]}
+                    alt={`Unit ${unit.unitNumber}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <DoorOpen className="h-12 w-12 text-secondary-300 dark:text-secondary-600" />
                   </div>
-                  <div className="text-sm text-secondary-600 dark:text-secondary-400">
-                    <p>Tenant ID: {unit.tenantId}</p>
-                    <p>Status: Occupied</p>
+                )}
+
+                {/* Image count indicator */}
+                {unit.images && unit.images.length > 1 && (
+                  <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
+                    <ImageIcon className="h-3 w-3 mr-1" />
+                    {unit.images.length}
+                  </div>
+                )}
+
+                {/* Floor plan indicator */}
+                {unit.floorPlan && (
+                  <div className="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded-md text-xs flex items-center">
+                    <FileText className="h-3 w-3 mr-1" />
+                    Plan
+                  </div>
+                )}
+
+                {/* Status badge */}
+                <div className="absolute bottom-2 right-2">
+                  <span className={getStatusBadge(unit.status)}>
+                    {unit.status}
+                  </span>
+                </div>
+
+                {/* Edit Button - Shows on hover */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEditUnit(unit);
+                  }}
+                  className="absolute bottom-2 left-2 p-2 bg-white dark:bg-secondary-800 rounded-lg shadow-md hover:bg-secondary-50 dark:hover:bg-secondary-700 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                  title="Edit Unit"
+                >
+                  <Edit className="h-4 w-4 text-secondary-600 dark:text-secondary-400" />
+                </button>
+              </div>
+
+              <div className="px-1">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                      Unit {unit.unitNumber}
+                    </h3>
+                    <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                      {unit.propertyName}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {getStatusIcon(unit.status)}
                   </div>
                 </div>
-              )}
+              </div>
 
-              {unit.status === 'vacant' && (
-                <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                  <p className="text-sm text-secondary-500 dark:text-secondary-400 italic">Available for rent</p>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                    Type
+                  </span>
+                  <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                    {getUnitTypeLabel(unit.type)}
+                  </span>
                 </div>
-              )}
 
-              {unit.status === 'maintenance' && (
-                <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                  <p className="text-sm text-warning-600 italic">Under maintenance</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                    Rent
+                  </span>
+                  <span className="font-semibold text-secondary-900 dark:text-secondary-100">
+                    {formatCurrency(unit.rent)}/month
+                  </span>
                 </div>
-              )}
 
-              {/* Quick Tenant Action */}
-              <div className="pt-4 border-t border-secondary-200 dark:border-secondary-600 mt-4">
-                <div className="flex justify-center">
-                  {unit.status === 'occupied' && unit.tenantId ? (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/tenants`);
-                      }}
-                      className="btn-secondary text-sm py-2 px-4"
-                    >
-                      View Tenant
-                    </button>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/tenants`);
-                      }}
-                      className="btn-primary text-sm py-2 px-4"
-                    >
-                      Add Tenant
-                    </button>
-                  )}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                    Deposit
+                  </span>
+                  <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                    {formatCurrency(unit.deposit)}
+                  </span>
+                </div>
+
+                {unit.status === "occupied" && unit.tenantName && (
+                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <User className="h-4 w-4 text-secondary-400" />
+                      <span className="font-medium text-secondary-900 dark:text-secondary-100">
+                        {unit.tenantName}
+                      </span>
+                    </div>
+                    <div className="text-sm text-secondary-600 dark:text-secondary-400">
+                      <p>Tenant ID: {unit.tenantId}</p>
+                      <p>Status: Occupied</p>
+                    </div>
+                  </div>
+                )}
+
+                {unit.status === "vacant" && (
+                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                    <p className="text-sm text-secondary-500 dark:text-secondary-400 italic">
+                      Available for rent
+                    </p>
+                  </div>
+                )}
+
+                {unit.status === "maintenance" && (
+                  <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
+                    <p className="text-sm text-warning-600 italic">
+                      Under maintenance
+                    </p>
+                  </div>
+                )}
+
+                {/* Quick Tenant Action */}
+                <div className="pt-4 border-t border-secondary-200 dark:border-secondary-600 mt-4">
+                  <div className="flex justify-center">
+                    {/* && unit.tenantId */}
+                    {unit.status === "occupied" ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewTenantModalOpen(true);
+                          const tenant =
+                            tenants.find((t) => t.id === unit.tenantId) || null;
+                          setViewingTenant(tenant);
+                        }}
+                        className="btn-secondary text-sm py-2 px-4"
+                      >
+                        View Tenant
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedUnit(unit);
+                          setIsAddTenantModalOpen(true);
+                        }}
+                        className="btn-primary text-sm py-2 px-4"
+                      >
+                        Add Tenant
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
 
-        {filteredUnits.length === 0 && (
-          <div className="text-center py-12">
-            <Home className="h-16 w-16 text-secondary-300 dark:text-secondary-600 mx-auto mb-4" />
-            <p className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">No units found</p>
-            <p className="text-secondary-600 dark:text-secondary-400">
-              {searchTerm || filterStatus !== 'all' 
-                ? 'Try adjusting your search or filter criteria'
-                : 'Get started by adding your first unit'
-              }
-            </p>
-          </div>
-        )}
-      </div>
+          {filteredUnits.length === 0 && (
+            <div className="text-center py-12">
+              <Home className="h-16 w-16 text-secondary-300 dark:text-secondary-600 mx-auto mb-4" />
+              <p className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">
+                No units found
+              </p>
+              <p className="text-secondary-600 dark:text-secondary-400">
+                {searchTerm || filterStatus !== "all"
+                  ? "Try adjusting your search or filter criteria"
+                  : "Get started by adding your first unit"}
+              </p>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Add Unit Modal */}
@@ -507,8 +413,40 @@ export default function UnitsPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSubmit={handleUnitSubmit}
-        properties={properties.map(p => ({ id: p.id, name: p.name }))}
+        properties={properties.map((p) => ({ id: p.id, name: p.name }))}
       />
+      {viewTenantModalOpen && viewingTenant ? (
+        <ViewTenantModal
+          isOpen={viewTenantModalOpen}
+          onClose={() => {
+            setViewTenantModalOpen(false);
+            setViewingTenant(null);
+          }}
+          tenant={viewingTenant}
+        />
+      ) : null}
+
+      {/* Add Tenant Modal */}
+      {isAddTenantModalOpen && (
+        <AddTenantModal
+          isOpen={isAddTenantModalOpen}
+          onClose={() => setIsAddTenantModalOpen(false)}
+          availableUnits={availableUnits}
+          onSubmit={async (tenantData) => {
+            await createTenant({
+              ...tenantData,
+              leaseStartDate: new Date(tenantData.leaseStartDate),
+              leaseEndDate: new Date(tenantData.leaseEndDate),
+              emergencyContact: {
+                name: tenantData.emergencyContactName,
+                phone: tenantData.emergencyContactPhone,
+                relationship: tenantData.emergencyContactRelationship,
+              },
+            });
+            setIsAddTenantModalOpen(false);
+          }}
+        />
+      )}
 
       {/* Edit Unit Modal */}
       {editingUnit && (
@@ -519,14 +457,18 @@ export default function UnitsPage() {
             setEditingUnit(null);
           }}
           unit={editingUnit}
-          properties={properties.map(p => ({ id: p.id, name: p.name }))}
+          properties={properties.map((p) => ({ id: p.id, name: p.name }))}
           onUpdate={handleUpdateUnit}
         />
       )}
 
       {/* Quick Actions Modal */}
       {selectedUnit && (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${isQuickActionsOpen ? '' : 'hidden'}`}>
+        <div
+          className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${
+            isQuickActionsOpen ? "" : "hidden"
+          }`}
+        >
           <div className="bg-white dark:bg-secondary-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-secondary-200 dark:border-secondary-600">
@@ -562,25 +504,37 @@ export default function UnitsPage() {
                     </h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-secondary-600 dark:text-secondary-400">Type:</span>
+                        <span className="text-secondary-600 dark:text-secondary-400">
+                          Type:
+                        </span>
                         <p className="font-medium text-secondary-900 dark:text-secondary-100">
                           {getUnitTypeLabel(selectedUnit.type)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-secondary-600 dark:text-secondary-400">Status:</span>
-                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full ml-2 ${getStatusBadge(selectedUnit.status)}`}>
+                        <span className="text-secondary-600 dark:text-secondary-400">
+                          Status:
+                        </span>
+                        <span
+                          className={`inline-block px-2 py-1 text-xs font-medium rounded-full ml-2 ${getStatusBadge(
+                            selectedUnit.status
+                          )}`}
+                        >
                           {selectedUnit.status}
                         </span>
                       </div>
                       <div>
-                        <span className="text-secondary-600 dark:text-secondary-400">Monthly Rent:</span>
+                        <span className="text-secondary-600 dark:text-secondary-400">
+                          Monthly Rent:
+                        </span>
                         <p className="font-medium text-secondary-900 dark:text-secondary-100">
                           {formatCurrency(selectedUnit.rent)}
                         </p>
                       </div>
                       <div>
-                        <span className="text-secondary-600 dark:text-secondary-400">Security Deposit:</span>
+                        <span className="text-secondary-600 dark:text-secondary-400">
+                          Security Deposit:
+                        </span>
                         <p className="font-medium text-secondary-900 dark:text-secondary-100">
                           {formatCurrency(selectedUnit.deposit)}
                         </p>
@@ -604,31 +558,37 @@ export default function UnitsPage() {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit Unit Details
                       </button>
-                      
-                                             {selectedUnit.status === 'vacant' ? (
-                         <button
-                           onClick={() => {
-                             setIsQuickActionsOpen(false);
-                             navigate(`/tenants`);
-                           }}
-                           className="btn-secondary flex items-center justify-center"
-                         >
-                           <UserPlus className="h-4 w-4 mr-2" />
-                           Add Tenant
-                         </button>
-                       ) : (
-                         <button
-                           onClick={() => {
-                             setIsQuickActionsOpen(false);
-                             navigate(`/tenants`);
-                           }}
-                           className="btn-secondary flex items-center justify-center"
-                         >
-                           <User className="h-4 w-4 mr-2" />
-                           View Tenant
-                         </button>
-                       )}
-                      
+
+                      {selectedUnit.status === "vacant" ? (
+                        <button
+                          onClick={() => {
+                            setIsQuickActionsOpen(false);
+                            navigate(`/tenants`);
+                          }}
+                          className="btn-secondary flex items-center justify-center"
+                        >
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Add Tenant
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setIsQuickActionsOpen(false);
+                            setViewTenantModalOpen(true);
+                            console.log("cli");
+                            const tenant =
+                              tenants.find(
+                                (t) => t.id === selectedUnit.tenantId
+                              ) || null;
+                            setViewingTenant(tenant);
+                          }}
+                          className="btn-secondary flex items-center justify-center"
+                        >
+                          <User className="h-4 w-4 mr-2" />
+                          View Tenant
+                        </button>
+                      )}
+
                       <button
                         onClick={() => {
                           setIsQuickActionsOpen(false);
@@ -656,7 +616,9 @@ export default function UnitsPage() {
                           <img
                             key={index}
                             src={image}
-                            alt={`Unit ${selectedUnit.unitNumber} - Photo ${index + 1}`}
+                            alt={`Unit ${selectedUnit.unitNumber} - Photo ${
+                              index + 1
+                            }`}
                             className="w-full h-24 object-cover rounded-lg border border-secondary-200 dark:border-secondary-600"
                           />
                         ))}
@@ -671,7 +633,9 @@ export default function UnitsPage() {
                     ) : (
                       <div className="border-2 border-dashed border-secondary-300 dark:border-secondary-600 rounded-lg p-6 text-center">
                         <Camera className="h-8 w-8 text-secondary-400 mx-auto mb-2" />
-                        <p className="text-sm text-secondary-600 dark:text-secondary-400">No photos uploaded</p>
+                        <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                          No photos uploaded
+                        </p>
                       </div>
                     )}
                   </div>
@@ -690,7 +654,9 @@ export default function UnitsPage() {
                     ) : (
                       <div className="border-2 border-dashed border-secondary-300 dark:border-secondary-600 rounded-lg p-6 text-center">
                         <FileText className="h-8 w-8 text-secondary-400 mx-auto mb-2" />
-                        <p className="text-sm text-secondary-600 dark:text-secondary-400">No floor plan uploaded</p>
+                        <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                          No floor plan uploaded
+                        </p>
                       </div>
                     )}
                   </div>
@@ -701,5 +667,5 @@ export default function UnitsPage() {
         </div>
       )}
     </div>
-  )
-} 
+  );
+}

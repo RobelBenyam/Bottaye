@@ -7,29 +7,31 @@ import Logo from "../components/Logo";
 import { useAuthStore } from "../stores/authStore";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-const loginSchema = z.object({
+const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type RegisterForm = z.infer<typeof registerSchema>;
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const { signIn, loading } = useAuthStore();
+  const { signUp, loading } = useAuthStore();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setError,
-  } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
   });
 
-  const onSubmit = async (data: LoginForm) => {
+  const onSubmit = async (data: RegisterForm) => {
     try {
-      await signIn(data.email, data.password);
+      console.log("Register data:", data);
+      await signUp(data.email, data.password, data.name);
     } catch (error: any) {
       setError("root", { message: error.message });
     }
@@ -43,15 +45,37 @@ export default function LoginPage() {
             <Logo size="lg" />
           </div>
           <h2 className="text-3xl font-bold text-secondary-900 dark:text-secondary-100">
-            Welcome Back
+            Welcome
           </h2>
           <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
-            Sign in to your property management dashboard
+            Sign up to your property management dashboard
           </p>
         </div>
 
         <div className="bg-white dark:bg-secondary-800 rounded-xl shadow-sm border border-secondary-200 dark:border-secondary-700 p-8">
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            <div>
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-secondary-700 dark:text-secondary-300"
+              >
+                Name
+              </label>
+              <div className="mt-1">
+                <input
+                  {...register("name")}
+                  type="text"
+                  autoComplete="name"
+                  className="input-field"
+                  placeholder="Enter your name"
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-error-600">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+            </div>
             <div>
               <label
                 htmlFor="email"
@@ -115,7 +139,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div>
+            <div className="space-y-3">
               <button
                 type="submit"
                 disabled={loading}
@@ -124,11 +148,36 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <LoadingSpinner size="sm" className="mr-2" />
-                    Signing in...
+                    Signing up...
                   </>
                 ) : (
-                  "Sign in"
+                  "Sign up"
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  // Demo register - bypass Firebase
+                  const demoUser = {
+                    id: "demo-user",
+                    email: "demo@bottaye.com",
+                    name: "Demo Admin",
+                    role: "admin" as const,
+                    propertyIds: ["1", "2"],
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  };
+                  // Save to localStorage for persistence
+                  localStorage.setItem(
+                    "bottaye_user",
+                    JSON.stringify(demoUser)
+                  );
+                  useAuthStore.setState({ user: demoUser, loading: false });
+                }}
+                className="btn-secondary w-full flex justify-center items-center"
+              >
+                Demo Register (Explore App)
               </button>
             </div>
           </form>

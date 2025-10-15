@@ -1,109 +1,111 @@
-import { useState, useEffect } from 'react'
-import { Plus, UserCog, Shield, Trash2, Edit2 } from 'lucide-react'
-import PageHeader from '../components/PageHeader'
-import { User } from '../types'
-import { userService } from '../services/database'
-import { useAuthStore } from '../stores/authStore'
-import toast from 'react-hot-toast'
-// These modals will be created later
-// import AddUserModal from '../components/modals/AddUserModal'
-// import EditUserModal from '../components/modals/EditUserModal'
-// import AssignPropertiesModal from '../components/modals/AssignPropertiesModal'
+import { useState, useEffect } from "react";
+import { Plus, UserCog, Shield, Trash2, Edit2 } from "lucide-react";
+import PageHeader from "../components/PageHeader";
+import { User } from "../types";
+import { userService } from "../services/database";
+import { useAuthStore } from "../stores/authStore";
+import toast from "react-hot-toast";
+import AddUserModal from "../components/modals/AddUserModal";
+import EditUserModal from "../components/modals/EditUserModal";
+import AssignPropertiesModal from "../components/modals/AssignPropertiesModal";
 
 export default function UsersPage() {
-  const currentUser = useAuthStore((state) => state.user)
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showAddModal, setShowAddModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [showAssignModal, setShowAssignModal] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const currentUser = useAuthStore((state) => state.user);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   // Only super admin can access this page
-  if (currentUser?.role !== 'super_admin') {
+  if (currentUser?.role !== "super_admin") {
     return (
       <div className="space-y-6">
-      <PageHeader 
-        title="Users" 
-        description="User management"
-      />
+        <PageHeader title="Users" description="User management" />
         <div className="card p-8 text-center">
           <Shield className="w-16 h-16 mx-auto text-secondary-400 mb-4" />
           <p className="text-lg text-secondary-600">Access Denied</p>
-          <p className="text-sm text-secondary-500 mt-2">Only super administrators can manage users.</p>
+          <p className="text-sm text-secondary-500 mt-2">
+            Only super administrators can manage users.
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   useEffect(() => {
-    loadUsers()
-  }, [])
+    loadUsers();
+  }, []);
 
   const loadUsers = async () => {
     try {
-      setLoading(true)
-      const data = await userService.getAll()
-      setUsers(data)
+      setLoading(true);
+      const data = await userService.getAll();
+      setUsers(data);
     } catch (error) {
-      console.error('Error loading users:', error)
-      toast.error('Failed to load users')
+      console.error("Error loading users:", error);
+      toast.error("Failed to load users");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDelete = async (user: User) => {
     if (user.id === currentUser?.id) {
-      toast.error('You cannot delete your own account')
-      return
+      toast.error("You cannot delete your own account");
+      return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) {
-      return
+    if (
+      !confirm(
+        `Are you sure you want to delete ${user.name}? This action cannot be undone.`
+      )
+    ) {
+      return;
     }
 
     try {
-      await userService.delete(user.id)
-      toast.success('User deleted successfully')
-      loadUsers()
+      await userService.delete(user.id);
+      toast.success("User deleted successfully");
+      loadUsers();
     } catch (error) {
-      console.error('Error deleting user:', error)
-      toast.error('Failed to delete user')
+      console.error("Error deleting user:", error);
+      toast.error("Failed to delete user");
     }
-  }
+  };
 
   const handleEdit = (user: User) => {
-    setSelectedUser(user)
-    setShowEditModal(true)
-  }
+    setSelectedUser(user);
+    setShowEditModal(true);
+  };
 
   const handleAssignProperties = (user: User) => {
-    setSelectedUser(user)
-    setShowAssignModal(true)
-  }
+    setSelectedUser(user);
+    setShowAssignModal(true);
+  };
 
   const getRoleBadge = (role: string) => {
-    if (role === 'super_admin') {
+    if (role === "super_admin") {
       return (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
           <Shield className="w-3 h-3 mr-1" />
           Super Admin
         </span>
-      )
+      );
     }
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
         <UserCog className="w-3 h-3 mr-1" />
         Admin
       </span>
-    )
-  }
+    );
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Users" 
+      <PageHeader
+        title="Users"
         description="Manage system users and administrators"
       >
         <button onClick={() => setShowAddModal(true)} className="btn-primary">
@@ -120,7 +122,9 @@ export default function UsersPage() {
         <div className="card p-8 text-center">
           <UserCog className="w-16 h-16 mx-auto text-secondary-400 mb-4" />
           <p className="text-lg text-secondary-600 mb-2">No users yet</p>
-          <p className="text-sm text-secondary-500 mb-4">Add your first user to get started</p>
+          <p className="text-sm text-secondary-500 mb-4">
+            Add your first user to get started
+          </p>
           <button onClick={() => setShowAddModal(true)} className="btn-primary">
             <Plus className="w-4 h-4 mr-2" />
             Add User
@@ -148,7 +152,10 @@ export default function UsersPage() {
               </thead>
               <tbody className="bg-white divide-y divide-secondary-200">
                 {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-secondary-50 transition-colors">
+                  <tr
+                    key={user.id}
+                    className="hover:bg-secondary-50 transition-colors"
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -157,8 +164,12 @@ export default function UsersPage() {
                           </span>
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-secondary-900">{user.name}</div>
-                          <div className="text-sm text-secondary-500">{user.email}</div>
+                          <div className="text-sm font-medium text-secondary-900">
+                            {user.name}
+                          </div>
+                          <div className="text-sm text-secondary-500">
+                            {user.email}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -166,8 +177,10 @@ export default function UsersPage() {
                       {getRoleBadge(user.role)}
                     </td>
                     <td className="px-6 py-4">
-                      {user.role === 'super_admin' ? (
-                        <span className="text-sm text-secondary-500 italic">All properties</span>
+                      {user.role === "super_admin" ? (
+                        <span className="text-sm text-secondary-500 italic">
+                          All properties
+                        </span>
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-secondary-900">
@@ -210,47 +223,49 @@ export default function UsersPage() {
         </div>
       )}
 
-      {/* Modals commented out until created
+      {/* Modals commented out until created */}
       {showAddModal && (
         <AddUserModal
+          isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           onSuccess={() => {
-            setShowAddModal(false)
-            loadUsers()
+            setShowAddModal(false);
+            loadUsers();
           }}
         />
       )}
 
       {showEditModal && selectedUser && (
         <EditUserModal
+          isOpen={showEditModal}
           user={selectedUser}
           onClose={() => {
-            setShowEditModal(false)
-            setSelectedUser(null)
+            setShowEditModal(false);
+            setSelectedUser(null);
           }}
           onSuccess={() => {
-            setShowEditModal(false)
-            setSelectedUser(null)
-            loadUsers()
+            setShowEditModal(false);
+            setSelectedUser(null);
+            loadUsers();
           }}
         />
       )}
 
       {showAssignModal && selectedUser && (
         <AssignPropertiesModal
+          isOpen={showAssignModal}
           user={selectedUser}
           onClose={() => {
-            setShowAssignModal(false)
-            setSelectedUser(null)
+            setShowAssignModal(false);
+            setSelectedUser(null);
           }}
           onSuccess={() => {
-            setShowAssignModal(false)
-            setSelectedUser(null)
-            loadUsers()
+            setShowAssignModal(false);
+            setSelectedUser(null);
+            loadUsers();
           }}
         />
       )}
-      */}
     </div>
-  )
+  );
 }

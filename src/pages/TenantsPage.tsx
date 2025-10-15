@@ -1,168 +1,118 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Phone, Mail, Home, Calendar, User, Edit, Eye, X, CreditCard, FileText } from 'lucide-react'
-import { formatCurrency } from '../utils/currency'
-import AddTenantModal from '../components/modals/AddTenantModal'
-import EditTenantModal from '../components/modals/EditTenantModal'
-import { tenantService } from '../services/database'
-import { localUnitService as localUnits, localPropertyService as localProps } from '../services/localStorage'
-import { unitService } from '../services/database'
-import { localUnitService } from '../services/localStorage'
-import { useAuthStore } from '../stores/authStore'
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Plus,
+  Search,
+  Phone,
+  Mail,
+  Home,
+  Calendar,
+  User,
+  Edit,
+  Eye,
+  X,
+  CreditCard,
+  FileText,
+} from "lucide-react";
+import { formatCurrency } from "../utils/currency";
+import AddTenantModal from "../components/modals/AddTenantModal";
+import EditTenantModal from "../components/modals/EditTenantModal";
+import { tenantService } from "../services/database";
+import {
+  localUnitService as localUnits,
+  localPropertyService as localProps,
+} from "../services/localStorage";
+import { unitService } from "../services/database";
+import { localUnitService } from "../services/localStorage";
+import { Tenant } from "@/types";
+import { useTenants } from "@/hooks/tenantsHook";
 
 export default function TenantsPage() {
-  const navigate = useNavigate()
-  const user = useAuthStore((state) => state.user)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [selectedTenant, setSelectedTenant] = useState<any>(null)
-  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [availableUnits, setAvailableUnits] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<any>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [availableUnits, setAvailableUnits] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadAvailableUnits = async () => {
       try {
         let units;
         try {
-          units = await unitService.getAll(user);
+          units = await unitService.getAll();
         } catch (firebaseError) {
           units = await localUnitService.getAll();
         }
-        
+
         // Filter to only vacant units
-        const vacantUnits = units.filter(unit => unit.status === 'vacant').map(unit => ({
-          id: unit.id,
-          unitNumber: unit.unitNumber,
-          propertyName: unit.propertyName,
-          rent: unit.rent
-        }));
-        
+        const vacantUnits = units
+          .filter((unit) => unit.status === "vacant")
+          .map((unit) => ({
+            id: unit.id,
+            unitNumber: unit.unitNumber,
+            propertyName: unit.propertyName,
+            rent: unit.rent,
+          }));
+
         setAvailableUnits(vacantUnits);
       } catch (error) {
-        console.error('Error loading units:', error);
+        console.error("Error loading units:", error);
         setAvailableUnits([]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     loadAvailableUnits();
   }, []);
 
-  const mockTenants = [
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john.doe@email.com',
-      phone: '+254712345678',
-      idNumber: '12345678',
-      unitNumber: '2A',
-      propertyName: 'Westlands Plaza',
-      rent: 45000,
-      deposit: 90000,
-      leaseStartDate: '2024-01-01',
-      leaseEndDate: '2024-12-31',
-      emergencyContact: {
-        name: 'Mary Doe',
-        phone: '+254787654321',
-        relationship: 'Spouse'
-      }
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      email: 'jane.smith@email.com',
-      phone: '+254723456789',
-      idNumber: '23456789',
-      unitNumber: '1B',
-      propertyName: 'Kilimani Heights',
-      rent: 30000,
-      deposit: 60000,
-      leaseStartDate: '2024-03-15',
-      leaseEndDate: '2025-03-15',
-      emergencyContact: {
-        name: 'Peter Smith',
-        phone: '+254798765432',
-        relationship: 'Brother'
-      }
-    },
-    {
-      id: '3',
-      name: 'Michael Johnson',
-      email: 'michael.j@email.com',
-      phone: '+254734567890',
-      idNumber: '34567890',
-      unitNumber: 'A1',
-      propertyName: 'Karen Residences',
-      rent: 85000,
-      deposit: 170000,
-      leaseStartDate: '2023-12-01',
-      leaseEndDate: '2024-11-30',
-      emergencyContact: {
-        name: 'Sarah Johnson',
-        phone: '+254709876543',
-        relationship: 'Sister'
-      }
-    },
-    {
-      id: '4',
-      name: 'Grace Wanjiku',
-      email: 'grace.w@email.com',
-      phone: '+254745678901',
-      idNumber: '45678901',
-      unitNumber: '3A',
-      propertyName: 'Kilimani Heights',
-      rent: 65000,
-      deposit: 130000,
-      leaseStartDate: '2024-02-01',
-      leaseEndDate: '2025-01-31',
-      emergencyContact: {
-        name: 'James Wanjiku',
-        phone: '+254720987654',
-        relationship: 'Father'
-      }
-    }
-  ]
+  const { tenants } = useTenants();
 
-  const filteredTenants = mockTenants.filter(tenant =>
-    tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.phone.includes(searchTerm) ||
-    tenant.unitNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    tenant.propertyName.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredTenants = tenants.filter(
+    (tenant) =>
+      tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.phone.includes(searchTerm) ||
+      tenant.unitNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      tenant.propertyName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    })
-  }
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   const isLeaseExpiringSoon = (endDate: string) => {
-    const today = new Date()
-    const lease = new Date(endDate)
-    const diffTime = lease.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays <= 60 && diffDays >= 0
-  }
+    const today = new Date();
+    const lease = new Date(endDate);
+    const diffTime = lease.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 60 && diffDays >= 0;
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-3xl font-bold text-secondary-900 dark:text-secondary-100">Tenants</h1>
-          <p className="text-secondary-600 dark:text-secondary-400 mt-1">Manage tenant relationships and lease agreements.</p>
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-secondary-100">
+            Tenants
+          </h1>
+          <p className="text-secondary-600 dark:text-secondary-400 mt-1">
+            Manage tenant relationships and lease agreements.
+          </p>
         </div>
         <div className="flex items-center space-x-3">
           <button className="btn-secondary flex items-center">
             <User className="h-5 w-5 mr-2" />
             Export List
           </button>
-          <button 
+          <button
             onClick={() => setIsAddModalOpen(true)}
             className="btn-primary flex items-center"
           >
@@ -189,22 +139,30 @@ export default function TenantsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {filteredTenants.map((tenant) => (
-          <div key={tenant.id} className="card-hover group cursor-pointer relative" onClick={() => {
-            setSelectedTenant(tenant);
-            setIsDetailsModalOpen(true);
-          }}>
+          <div
+            key={tenant.id}
+            className="card-hover group cursor-pointer relative"
+            onClick={() => {
+              setSelectedTenant(tenant);
+              setIsDetailsModalOpen(true);
+            }}
+          >
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center space-x-3">
                 <div className="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
                   <User className="h-6 w-6 text-primary-600 dark:text-primary-400" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">{tenant.name}</h3>
-                  <p className="text-sm text-secondary-600 dark:text-secondary-400">ID: {tenant.idNumber}</p>
+                  <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
+                    {tenant.name}
+                  </h3>
+                  <p className="text-sm text-secondary-600 dark:text-secondary-400">
+                    ID: {tenant.idNumber}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {isLeaseExpiringSoon(tenant.leaseEndDate) && (
+                {isLeaseExpiringSoon(tenant.leaseEndDate?.toString() ?? "") && (
                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-warning-100 text-warning-700 dark:bg-warning-900/20 dark:text-warning-400">
                     Lease Expiring
                   </span>
@@ -226,12 +184,16 @@ export default function TenantsPage() {
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
                 <Mail className="h-4 w-4 text-secondary-400" />
-                <span className="text-sm text-secondary-900 dark:text-secondary-100">{tenant.email}</span>
+                <span className="text-sm text-secondary-900 dark:text-secondary-100">
+                  {tenant.email}
+                </span>
               </div>
 
               <div className="flex items-center space-x-3">
                 <Phone className="h-4 w-4 text-secondary-400" />
-                <span className="text-sm text-secondary-900 dark:text-secondary-100">{tenant.phone}</span>
+                <span className="text-sm text-secondary-900 dark:text-secondary-100">
+                  {tenant.phone}
+                </span>
               </div>
 
               <div className="flex items-center space-x-3">
@@ -243,12 +205,20 @@ export default function TenantsPage() {
 
               <div className="grid grid-cols-2 gap-4 pt-3 border-t border-secondary-200 dark:border-secondary-600">
                 <div>
-                  <p className="text-xs text-secondary-600 dark:text-secondary-400">Monthly Rent</p>
-                  <p className="font-semibold text-secondary-900 dark:text-secondary-100">{formatCurrency(tenant.rent)}</p>
+                  <p className="text-xs text-secondary-600 dark:text-secondary-400">
+                    Monthly Rent
+                  </p>
+                  <p className="font-semibold text-secondary-900 dark:text-secondary-100">
+                    {formatCurrency(tenant.rent ?? 0)}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-xs text-secondary-600 dark:text-secondary-400">Deposit</p>
-                  <p className="font-semibold text-secondary-900 dark:text-secondary-100">{formatCurrency(tenant.deposit)}</p>
+                  <p className="text-xs text-secondary-600 dark:text-secondary-400">
+                    Deposit
+                  </p>
+                  <p className="font-semibold text-secondary-900 dark:text-secondary-100">
+                    {formatCurrency(tenant.deposit ?? 0)}
+                  </p>
                 </div>
               </div>
 
@@ -256,16 +226,22 @@ export default function TenantsPage() {
                 <div className="flex items-center space-x-2">
                   <Calendar className="h-4 w-4 text-secondary-400" />
                   <span className="text-sm text-secondary-600 dark:text-secondary-400">
-                    {formatDate(tenant.leaseStartDate)} - {formatDate(tenant.leaseEndDate)}
+                    {formatDate(tenant.leaseStartDate?.toString() ?? "")} -{" "}
+                    {formatDate(tenant.leaseEndDate?.toString() ?? "")}
                   </span>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-secondary-200 dark:border-secondary-600">
-                <p className="text-xs text-secondary-600 dark:text-secondary-400 mb-1">Emergency Contact</p>
+                <p className="text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                  Emergency Contact
+                </p>
                 <div className="text-sm text-secondary-900 dark:text-secondary-100">
                   <p className="font-medium">{tenant.emergencyContact.name}</p>
-                  <p>{tenant.emergencyContact.phone} ({tenant.emergencyContact.relationship})</p>
+                  <p>
+                    {tenant.emergencyContact.phone} (
+                    {tenant.emergencyContact.relationship})
+                  </p>
                 </div>
               </div>
 
@@ -274,7 +250,7 @@ export default function TenantsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/payments');
+                    navigate("/payments");
                   }}
                   className="btn-secondary flex-1 text-sm py-2"
                 >
@@ -284,7 +260,7 @@ export default function TenantsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    navigate('/leases');
+                    navigate("/leases");
                   }}
                   className="btn-secondary flex-1 text-sm py-2"
                 >
@@ -300,12 +276,13 @@ export default function TenantsPage() {
       {filteredTenants.length === 0 && (
         <div className="text-center py-12">
           <User className="h-16 w-16 text-secondary-300 dark:text-secondary-600 mx-auto mb-4" />
-          <p className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">No tenants found</p>
+          <p className="text-lg font-medium text-secondary-900 dark:text-secondary-100 mb-2">
+            No tenants found
+          </p>
           <p className="text-secondary-600 dark:text-secondary-400">
-            {searchTerm 
-              ? 'Try adjusting your search criteria'
-              : 'Get started by adding your first tenant'
-            }
+            {searchTerm
+              ? "Try adjusting your search criteria"
+              : "Get started by adding your first tenant"}
           </p>
         </div>
       )}
@@ -323,13 +300,17 @@ export default function TenantsPage() {
                 phone: data.phone,
                 idNumber: data.idNumber,
                 unitId: data.unitId,
-                unitNumber: availableUnits.find(u => u.id === data.unitId)?.unitNumber,
-                propertyId: undefined,
-                propertyName: availableUnits.find(u => u.id === data.unitId)?.propertyName,
+                unitNumber: availableUnits.find((u) => u.id === data.unitId)
+                  ?.unitNumber,
+                // propertyId: undefined,
+                propertyName: availableUnits.find((u) => u.id === data.unitId)
+                  ?.propertyName,
                 leaseStartDate: new Date(data.leaseStartDate) as unknown as any,
                 leaseEndDate: new Date(data.leaseEndDate) as unknown as any,
-                rent: availableUnits.find(u => u.id === data.unitId)?.rent,
-                deposit: (availableUnits.find(u => u.id === data.unitId)?.rent || 0) * 2,
+                rent: availableUnits.find((u) => u.id === data.unitId)?.rent,
+                deposit:
+                  (availableUnits.find((u) => u.id === data.unitId)?.rent ||
+                    0) * 2,
                 emergencyContact: {
                   name: data.emergencyContactName,
                   phone: data.emergencyContactPhone,
@@ -337,13 +318,14 @@ export default function TenantsPage() {
                 },
                 createdAt: new Date() as unknown as any,
                 updatedAt: new Date() as unknown as any,
-              } as any)
+              } as any);
             } catch (firebaseError) {
               // fallback not implemented for tenants; no-op
+              console.error("Failed to add tenant", firebaseError);
             }
-            setIsAddModalOpen(false)
+            setIsAddModalOpen(false);
           } catch (e) {
-            console.error('Failed to create tenant', e)
+            console.error("Failed to create tenant", e);
           }
         }}
         availableUnits={availableUnits}
@@ -372,10 +354,10 @@ export default function TenantsPage() {
                   relationship: data.emergencyContactRelationship,
                 },
                 updatedAt: new Date() as unknown as any,
-              } as any)
-              setIsEditModalOpen(false)
+              } as any);
+              setIsEditModalOpen(false);
             } catch (e) {
-              console.error('Failed to update tenant', e)
+              console.error("Failed to update tenant", e);
             }
           }}
         />
@@ -383,7 +365,11 @@ export default function TenantsPage() {
 
       {/* Tenant Details Modal */}
       {selectedTenant && (
-        <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${isDetailsModalOpen ? '' : 'hidden'}`}>
+        <div
+          className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 ${
+            isDetailsModalOpen ? "" : "hidden"
+          }`}
+        >
           <div className="bg-white dark:bg-secondary-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-secondary-200 dark:border-secondary-600">
@@ -420,29 +406,45 @@ export default function TenantsPage() {
                       <div className="flex items-center space-x-3">
                         <User className="h-4 w-4 text-secondary-400" />
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Full Name:</span>
-                          <p className="font-medium text-secondary-900 dark:text-secondary-100">{selectedTenant.name}</p>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Full Name:
+                          </span>
+                          <p className="font-medium text-secondary-900 dark:text-secondary-100">
+                            {selectedTenant.name}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <Mail className="h-4 w-4 text-secondary-400" />
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Email:</span>
-                          <p className="font-medium text-secondary-900 dark:text-secondary-100">{selectedTenant.email}</p>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Email:
+                          </span>
+                          <p className="font-medium text-secondary-900 dark:text-secondary-100">
+                            {selectedTenant.email}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <Phone className="h-4 w-4 text-secondary-400" />
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Phone:</span>
-                          <p className="font-medium text-secondary-900 dark:text-secondary-100">{selectedTenant.phone}</p>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Phone:
+                          </span>
+                          <p className="font-medium text-secondary-900 dark:text-secondary-100">
+                            {selectedTenant.phone}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <FileText className="h-4 w-4 text-secondary-400" />
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">ID Number:</span>
-                          <p className="font-medium text-secondary-900 dark:text-secondary-100">{selectedTenant.idNumber}</p>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            ID Number:
+                          </span>
+                          <p className="font-medium text-secondary-900 dark:text-secondary-100">
+                            {selectedTenant.idNumber}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -453,9 +455,16 @@ export default function TenantsPage() {
                       Emergency Contact
                     </h3>
                     <div className="space-y-2 text-sm">
-                      <p className="font-medium text-secondary-900 dark:text-secondary-100">{selectedTenant.emergencyContact.name}</p>
-                      <p className="text-secondary-600 dark:text-secondary-400">{selectedTenant.emergencyContact.phone}</p>
-                      <p className="text-secondary-600 dark:text-secondary-400">Relationship: {selectedTenant.emergencyContact.relationship}</p>
+                      <p className="font-medium text-secondary-900 dark:text-secondary-100">
+                        {selectedTenant.emergencyContact.name}
+                      </p>
+                      <p className="text-secondary-600 dark:text-secondary-400">
+                        {selectedTenant.emergencyContact.phone}
+                      </p>
+                      <p className="text-secondary-600 dark:text-secondary-400">
+                        Relationship:{" "}
+                        {selectedTenant.emergencyContact.relationship}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -470,30 +479,40 @@ export default function TenantsPage() {
                       <div className="flex items-center space-x-3">
                         <Home className="h-4 w-4 text-secondary-400" />
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Property:</span>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Property:
+                          </span>
                           <p className="font-medium text-secondary-900 dark:text-secondary-100">
-                            Unit {selectedTenant.unitNumber}, {selectedTenant.propertyName}
+                            Unit {selectedTenant.unitNumber},{" "}
+                            {selectedTenant.propertyName}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <Calendar className="h-4 w-4 text-secondary-400" />
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Lease Period:</span>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Lease Period:
+                          </span>
                           <p className="font-medium text-secondary-900 dark:text-secondary-100">
-                            {formatDate(selectedTenant.leaseStartDate)} - {formatDate(selectedTenant.leaseEndDate)}
+                            {formatDate(selectedTenant.leaseStartDate)} -{" "}
+                            {formatDate(selectedTenant.leaseEndDate)}
                           </p>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-4 pt-2">
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Monthly Rent:</span>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Monthly Rent:
+                          </span>
                           <p className="font-semibold text-lg text-secondary-900 dark:text-secondary-100">
                             {formatCurrency(selectedTenant.rent)}
                           </p>
                         </div>
                         <div>
-                          <span className="text-secondary-600 dark:text-secondary-400">Security Deposit:</span>
+                          <span className="text-secondary-600 dark:text-secondary-400">
+                            Security Deposit:
+                          </span>
                           <p className="font-semibold text-lg text-secondary-900 dark:text-secondary-100">
                             {formatCurrency(selectedTenant.deposit)}
                           </p>
@@ -507,7 +526,7 @@ export default function TenantsPage() {
                       Quick Actions
                     </h3>
                     <div className="grid grid-cols-1 gap-3">
-                      <button 
+                      <button
                         onClick={() => {
                           setIsDetailsModalOpen(false);
                           setIsEditModalOpen(true);
@@ -517,30 +536,30 @@ export default function TenantsPage() {
                         <Edit className="h-4 w-4 mr-2" />
                         Edit Tenant Details
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setIsDetailsModalOpen(false);
-                          navigate('/payments');
+                          navigate("/payments");
                         }}
                         className="btn-secondary flex items-center justify-center"
                       >
                         <CreditCard className="h-4 w-4 mr-2" />
                         View Payment History
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setIsDetailsModalOpen(false);
-                          navigate('/leases');
+                          navigate("/leases");
                         }}
                         className="btn-secondary flex items-center justify-center"
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         View Lease Agreement
                       </button>
-                      <button 
+                      <button
                         onClick={() => {
                           setIsDetailsModalOpen(false);
-                          navigate('/maintenance');
+                          navigate("/maintenance");
                         }}
                         className="btn-secondary flex items-center justify-center"
                       >
@@ -556,5 +575,5 @@ export default function TenantsPage() {
         </div>
       )}
     </div>
-  )
-} 
+  );
+}
