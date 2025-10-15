@@ -1,156 +1,161 @@
-import React, { useState, useEffect } from "react";
-import { User, Property } from "@/types";
-import { propertyService, userService } from "@/services/database";
+import { useState } from "react";
+import { X, Edit2, Mail, User as UserIcon, Shield } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { User } from "../../types";
+import { userService } from "../../services/database";
+import toast from "react-hot-toast";
+
+const userSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  role: z.enum(["super_admin", "admin"]),
+});
+
+type UserForm = z.infer<typeof userSchema>;
 
 interface EditUserModalProps {
+  isOpen: boolean;
   user: User;
-  open: boolean;
   onClose: () => void;
-  onSave: (updatedUser: User) => void;
+  onSuccess: () => void;
 }
 
 export default function EditUserModal({
   user,
-  open,
   onClose,
-  onSave,
+  onSuccess,
 }: EditUserModalProps) {
-  const [name, setName] = useState(user.name);
-  const [email, setEmail] = useState(user.email);
-  const [role, setRole] = useState(user.role);
-  const [assignedProperties, setAssignedProperties] = useState<string[]>(
-    user.propertyIds || []
-  );
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    setName(user.name);
-    setEmail(user.email);
-    setRole(user.role);
-    setAssignedProperties(user.propertyIds || []);
-  }, [user]);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UserForm>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
+  });
 
-  useEffect(() => {
-    propertyService.getAll().then(setProperties);
-  }, []);
+  const onSubmit = async (data: UserForm) => {
+    try {
+      setLoading(true);
 
-  const handlePropertyChange = (
-    propertyId: string,
-    checked: boolean,
-    disabled: boolean
-  ) => {
-    if (disabled) return;
-    setAssignedProperties((prev) =>
-      checked ? [...prev, propertyId] : prev.filter((id) => id !== propertyId)
-    );
+      await userService.update(user.id, {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      });
+
+      toast.success("User updated successfully");
+      onSuccess();
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user");
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const handleSave = async () => {
-    setSaving(true);
-    const updatedUser: User = {
-      ...user,
-      name,
-      email,
-      role,
-      propertyIds: assignedProperties,
-    };
-    await userService.update(user.id, updatedUser);
-    setSaving(false);
-    onSave(updatedUser);
-    onClose();
-  };
-
-  if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white p-6 rounded shadow-lg max-w-lg w-full relative">
-        <h2 className="text-xl font-bold mb-4">Edit User</h2>
-        <div className="space-y-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center">
+              <Edit2 className="w-5 h-5 text-primary-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-secondary-900">
+              Edit User
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-secondary-400 hover:text-secondary-600"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium">Name</label>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <UserIcon className="w-4 h-4 inline mr-1" />
+              Full Name
+            </label>
             <input
+              {...register("name")}
               type="text"
-              className="input w-full"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              className="input-field"
+              placeholder="Enter full name"
             />
+            {errors.name && (
+              <p className="mt-1 text-sm text-error-600">
+                {errors.name.message}
+              </p>
+            )}
           </div>
+
           <div>
-            <label className="block text-sm font-medium">Email</label>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <Mail className="w-4 h-4 inline mr-1" />
+              Email Address
+            </label>
             <input
+              {...register("email")}
               type="email"
-              className="input w-full"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              className="input-field"
+              placeholder="user@example.com"
+              disabled
             />
+            <p className="mt-1 text-xs text-secondary-500">
+              Email cannot be changed after creation
+            </p>
           </div>
+
           <div>
-            <label className="block text-sm font-medium">Role</label>
-            <select
-              className="input w-full"
-              value={role}
-              onChange={(e) => setRole(e.target.value as User["role"])}
-            >
-              <option value="property_manager">Property Manager</option>
+            <label className="block text-sm font-medium text-secondary-700 mb-1">
+              <Shield className="w-4 h-4 inline mr-1" />
+              Role
+            </label>
+            <select {...register("role")} className="input-field">
+              <option value="admin">Admin</option>
               <option value="super_admin">Super Admin</option>
             </select>
+            {errors.role && (
+              <p className="mt-1 text-sm text-error-600">
+                {errors.role.message}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-secondary-500">
+              Admins can only manage assigned properties. Super Admins have full
+              access.
+            </p>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Assigned Properties
-            </label>
-            <div className="space-y-1">
-              {properties.map((property) => {
-                const isCreatedByUser = property.managerId === user.id;
-                const checked =
-                  assignedProperties.includes(property.id) || isCreatedByUser;
-                return (
-                  <div key={property.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={isCreatedByUser}
-                      onChange={(e) =>
-                        handlePropertyChange(
-                          property.id,
-                          e.target.checked,
-                          isCreatedByUser
-                        )
-                      }
-                      className="mr-2"
-                    />
-                    <span className={isCreatedByUser ? "text-gray-400" : ""}>
-                      {property.name}
-                    </span>
-                    {isCreatedByUser && (
-                      <span className="ml-2 text-xs text-primary-600">
-                        (Created by user)
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-secondary flex-1"
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary flex-1"
+              disabled={loading}
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
           </div>
-        </div>
-        <div className="mt-6 flex justify-end space-x-2">
-          <button
-            className="btn btn-secondary"
-            onClick={onClose}
-            disabled={saving}
-          >
-            Cancel
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );

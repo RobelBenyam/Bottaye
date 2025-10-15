@@ -69,7 +69,7 @@ export function useMaintenance(propertyIds?: string[]) {
 
   useEffect(() => {
     fetchMaintenance();
-  }, [fetchMaintenance]);
+  }, [JSON.stringify(propertyIds)]);
 
   /**
    * Creates a new maintenance request.
